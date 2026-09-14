@@ -5,24 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokemon Draft League Portal</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/modern.css">
 </head>
 <body>
 <div id="toast"></div>
-
 <div id="login-screen" class="center-screen">
     <div class="login-card">
-        <h1>Pokemon Draft League Portal</h1>
-        <p>Prototype login</p>
+        <div class="eyebrow">League Portal</div>
+        <h1>Pokemon Draft League</h1>
+        <p class="muted">Sign in to manage your season.</p>
         <label>Username<input id="login-username" value="manager"></label>
         <label>Password<input id="login-password" type="password" value="manager"></label>
         <button id="login-button">Log In</button>
-        <div class="hint">
-            <strong>Manager:</strong> manager / manager<br>
-            <strong>Coach:</strong> coach1 through coach16 / password
-        </div>
+        <div class="hint"><strong>Manager:</strong> manager / manager<br><strong>Coach:</strong> coach1 through coach16 / password</div>
     </div>
 </div>
-
 <div id="app" class="app hidden">
     <aside class="sidebar">
         <div class="brand">Draft League</div>
@@ -39,7 +36,6 @@
         </nav>
         <button id="logout-button" class="logout">Log Out</button>
     </aside>
-
     <main class="content">
         <section id="page-home" class="page"></section>
         <section id="page-draft" class="page hidden"></section>
@@ -52,5 +48,6 @@
     </main>
 </div>
 <script src="/js/app.js"></script>
+<script src="/js/modern.js"></script>
 </body>
 </html>
