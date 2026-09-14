@@ -27,6 +27,16 @@ public class DataInitializer {
             if(pokemon.count()==0){
                 Random random=new Random(20260909L);
                 for(String name:championsPool()) pokemon.save(new Pokemon(name,random.nextInt(21)));
+            } else {
+                // Keep an existing demo database in sync when a species is split into
+                // competitively distinct forms. Never delete a generic entry if it was drafted.
+                Random random=new Random(20260909L);
+                for(String name:championsPool()){
+                    if(pokemon.findByName(name).isEmpty()) pokemon.save(new Pokemon(name,random.nextInt(21)));
+                }
+                for(String oldName:List.of("Meowstic","Lycanroc")){
+                    pokemon.findByName(oldName).ifPresent(old -> { if(!old.isDrafted()) pokemon.delete(old); });
+                }
             }
             if(matchups.count()==0 && teams.count()==16) schedule.generate();
         };
@@ -49,10 +59,10 @@ public class DataInitializer {
             "Simisear","Simipour","Musharna","Excadrill","Audino","Conkeldurr","Scolipede","Whimsicott","Krookodile","Scrafty",
             "Cofagrigus","Garbodor","Zoroark","Zoroark (Hisuian)","Reuniclus","Vanilluxe","Emolga","Eelektross","Chandelure","Beartic",
             "Stunfisk","Stunfisk (Galarian)","Golurk","Hydreigon","Volcarona","Chesnaught","Delphox","Greninja","Diggersby","Talonflame",
-            "Vivillon","Pyroar","Floette (Eternal Flower)","Florges","Gogoat","Pangoro","Furfrou","Meowstic","Aegislash","Aromatisse",
+            "Vivillon","Pyroar","Floette (Eternal Flower)","Florges","Gogoat","Pangoro","Furfrou","Meowstic (Male)","Meowstic (Female)","Aegislash","Aromatisse",
             "Slurpuff","Malamar","Barbaracle","Dragalge","Clawitzer","Heliolisk","Tyrantrum","Aurorus","Sylveon","Hawlucha",
             "Dedenne","Goodra","Goodra (Hisuian)","Klefki","Trevenant","Gourgeist","Avalugg","Avalugg (Hisuian)","Noivern","Decidueye",
-            "Decidueye (Hisuian)","Incineroar","Primarina","Toucannon","Crabominable","Lycanroc","Toxapex","Mudsdale","Araquanid","Salazzle",
+            "Decidueye (Hisuian)","Incineroar","Primarina","Toucannon","Crabominable","Lycanroc (Midday)","Lycanroc (Midnight)","Lycanroc (Dusk)","Toxapex","Mudsdale","Araquanid","Salazzle",
             "Tsareena","Oranguru","Passimian","Golisopod","Mimikyu","Drampa","Kommo-o","Rillaboom","Cinderace","Inteleon",
             "Corviknight","Thievul","Flapple","Appletun","Sandaconda","Toxtricity (Amped)","Toxtricity (Low Key)","Grapploct","Polteageist","Hatterene",
             "Grimmsnarl","Perrserker","Sirfetch'd","Mr. Rime","Runerigus","Alcremie","Falinks","Pincurchin","Indeedee (Male)","Indeedee (Female)",
