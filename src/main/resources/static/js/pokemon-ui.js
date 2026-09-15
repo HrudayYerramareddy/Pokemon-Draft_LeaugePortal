@@ -1,15 +1,15 @@
 /* Enhanced Pokemon card UI. Loaded after app.js so it can upgrade existing renderers without changing league APIs. */
 const pokemonMetaCache=new Map();
-// V5 invalidates old image lookups after correcting generic-form API slugs.
-const POKE_CACHE_KEY='draftLeaguePokemonMetaV5';
+// V6 invalidates old image lookups after correcting Rotom and Squawkabilly form slugs.
+const POKE_CACHE_KEY='draftLeaguePokemonMetaV6';
 try{Object.entries(JSON.parse(localStorage.getItem(POKE_CACHE_KEY)||'{}')).forEach(([k,v])=>pokemonMetaCache.set(k,v));}catch{}
 function pokeSlug(name){const special={
 'Raichu (Alolan)':'raichu-alola','Ninetales (Alolan)':'ninetales-alola','Persian (Alolan)':'persian-alola','Arcanine (Hisuian)':'arcanine-hisui','Slowbro (Galarian)':'slowbro-galar','Tauros (Paldean Combat)':'tauros-paldea-combat-breed','Tauros (Paldean Blaze)':'tauros-paldea-blaze-breed','Tauros (Paldean Aqua)':'tauros-paldea-aqua-breed','Typhlosion (Hisuian)':'typhlosion-hisui','Slowking (Galarian)':'slowking-galar','Samurott (Hisuian)':'samurott-hisui','Zoroark (Hisuian)':'zoroark-hisui','Stunfisk (Galarian)':'stunfisk-galar','Goodra (Hisuian)':'goodra-hisui','Avalugg (Hisuian)':'avalugg-hisui','Decidueye (Hisuian)':'decidueye-hisui',
-'Indeedee (Male)':'indeedee-male','Indeedee (Female)':'indeedee-female','Basculegion (Male)':'basculegion-male','Basculegion (Female)':'basculegion-female','Toxtricity (Amped)':'toxtricity-amped','Toxtricity (Low Key)':'toxtricity-low-key','Squawkabilly (Green)':'squawkabilly-green-plumage','Squawkabilly (Blue)':'squawkabilly-blue-plumage','Squawkabilly (Yellow)':'squawkabilly-yellow-plumage','Squawkabilly (White)':'squawkabilly-white-plumage','Floette (Eternal Flower)':'floette-eternal',
+'Indeedee (Male)':'indeedee-male','Indeedee (Female)':'indeedee-female','Basculegion (Male)':'basculegion-male','Basculegion (Female)':'basculegion-female','Toxtricity (Amped)':'toxtricity-amped','Toxtricity (Low Key)':'toxtricity-low-key','Squawkabilly':'squawkabilly-blue-plumage','Floette (Eternal Flower)':'floette-eternal',
 // These stay ONE league/draft entry. The form below is only the representative PokeAPI image/stats form.
 'Pyroar':'pyroar-male','Maushold':'maushold-family-of-four','Aegislash':'aegislash-shield','Gourgeist':'gourgeist-average','Mimikyu':'mimikyu-disguised','Morpeko':'morpeko-full-belly','Palafin':'palafin-zero',
 'Meowstic':'meowstic-male','Meowstic (Male)':'meowstic-male','Meowstic (Female)':'meowstic-female','Lycanroc':'lycanroc-midday','Lycanroc (Midday)':'lycanroc-midday','Lycanroc (Midnight)':'lycanroc-midnight','Lycanroc (Dusk)':'lycanroc-dusk',
-'Rotom Heat':'heat-rotom','Rotom Wash':'wash-rotom','Rotom Frost':'frost-rotom','Rotom Fan':'fan-rotom','Rotom Mow':'mow-rotom'
+'Rotom':'rotom','Rotom Heat':'rotom-heat','Rotom Wash':'rotom-wash','Rotom Frost':'rotom-frost','Rotom Fan':'rotom-fan','Rotom Mow':'rotom-mow'
 };if(special[name])return special[name];return name.toLowerCase().replace(/[.'’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
 function prettyPokeText(s){return String(s||'').split('-').map(x=>x?x[0].toUpperCase()+x.slice(1):'').join(' ')}
 async function fetchPokemonData(slug){const r=await fetch(`https://pokeapi.co/api/v2/pokemon/${slug}`);if(!r.ok)throw new Error('not found');return r.json()}
