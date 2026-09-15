@@ -1,4 +1,4 @@
-/* Read each fetch response body exactly once. This avoids "Response already read" when an endpoint returns plain text or an empty non-204 body. */
+/* Read each fetch response body exactly once and normalize Spring error responses. */
 api=async function(url,options={}){
   const opts={headers:{'Content-Type':'application/json'},...options};
   if(options.body&&typeof options.body!=='string')opts.body=JSON.stringify(options.body);
@@ -12,7 +12,14 @@ api=async function(url,options={}){
   }
 
   if(!res.ok){
-    const msg=(data&&typeof data==='object'&&(data.detail||data.message))||data||`Request failed (${res.status})`;
+    let msg=`Request failed (${res.status})`;
+    if(typeof data==='string'&&data.trim()) msg=data;
+    else if(data&&typeof data==='object') {
+      msg=data.detail||data.message||data.error||data.title||msg;
+      if(typeof msg!=='string') {
+        try{msg=JSON.stringify(msg);}catch{msg=`Request failed (${res.status})`;}
+      }
+    }
     throw new Error(msg);
   }
   return data;
