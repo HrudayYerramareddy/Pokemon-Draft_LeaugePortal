@@ -13,12 +13,13 @@ const FORM_SLUG_OVERRIDES={
 const oldPokeSlug=pokeSlug;
 pokeSlug=function(name){return FORM_SLUG_OVERRIDES[name]||oldPokeSlug(name)};
 
-/* Do not reuse stale metadata saved while the Rotom slugs were wrong. */
+/* Do not reuse stale metadata saved while form slugs were wrong. */
 ['Rotom Heat','Rotom Wash','Rotom Frost','Rotom Fan','Rotom Mow','Squawkabilly','Palafin','Meowstic (Male)','Meowstic (Female)'].forEach(n=>pokemonMetaCache.delete(n));
 
+/* Mega Meowstic is one Mega form usable by either male or female Meowstic. */
 const MEOWSTIC_MEGA_SLUGS={
-  'Meowstic (Male)':'meowstic-male-mega',
-  'Meowstic (Female)':'meowstic-female-mega'
+  'Meowstic (Male)':'meowstic-mega',
+  'Meowstic (Female)':'meowstic-mega'
 };
 const Z_MEGA_SLUGS={
   'Lucario':'lucario-mega-z',
@@ -26,6 +27,23 @@ const Z_MEGA_SLUGS={
   'Absol':'absol-mega-z'
 };
 const PALAFIN_HERO_SLUG='palafin-hero';
+
+/* PokeAPI may lag newly released Champions/Z-A Mega forms, so keep a local fallback for Mega Meowstic. */
+const oldFetchMetaBySlug=fetchMetaBySlug;
+fetchMetaBySlug=async function(slug){
+  const found=await oldFetchMetaBySlug(slug);
+  if(found)return found;
+  if(slug==='meowstic-mega')return {
+    image:'https://play.pokemonshowdown.com/sprites/ani/meowstic-mega.gif',
+    abilities:['Trace'],
+    moves:[],
+    stats:[
+      {name:'Hp',value:74},{name:'Attack',value:48},{name:'Defense',value:76},
+      {name:'Special Attack',value:143},{name:'Special Defense',value:101},{name:'Speed',value:124}
+    ]
+  };
+  return null;
+};
 
 /* Keep normal Mega and Z Mega as separate buttons instead of cycling through both. */
 showPokemonDetails=function(p){getPokemonFullMeta(p.name).then(base=>{
@@ -42,7 +60,7 @@ showPokemonDetails=function(p){getPokemonFullMeta(p.name).then(base=>{
     let meta=base,title=p.name,badge='',eyebrow='Pokémon Details';
     if(active==='mega'&&normalMega){
       const mm=await fetchMetaBySlug(normalMega);
-      if(mm){meta=mm;title=megaLabel(normalMega);badge='MEGA';eyebrow='Mega Evolution';}
+      if(mm){meta=mm;title=p.name.startsWith('Meowstic')?'Mega Meowstic':megaLabel(normalMega);badge='MEGA';eyebrow='Mega Evolution';}
       else{toast('Mega data is not available from the Pokémon data service yet.',true);active='base';}
     }else if(active==='z'&&zMega){
       const zm=await fetchMetaBySlug(zMega);
