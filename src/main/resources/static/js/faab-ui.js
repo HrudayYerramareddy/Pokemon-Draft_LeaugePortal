@@ -5,14 +5,19 @@
   async function loadPokemonNames() {
     const all = await api('/api/pokemon');
     pokemonNames.clear();
-    all.forEach(p => pokemonNames.set(p.id, p.name));
+    all.forEach(p => pokemonNames.set(Number(p.id), p.name));
+  }
+
+  function pokemonNameForDisplay(id) {
+    if(id==null) return '—';
+    return pokemonNames.get(Number(id)) || 'Unknown Pokémon';
   }
 
   window.bidTable = function(list) {
     const manager = state.user.role === 'MANAGER';
     return `<div class="card"><h2>${manager?'All FAAB Bids':'My FAAB Bids'}</h2>
       <div class="table-wrap"><table><thead><tr><th>Team</th><th>Free Agent</th><th>Drop If Won</th><th>Bid</th><th>Status</th></tr></thead>
-      <tbody>${list.map(b=>`<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(pokemonNames.get(b.wantedPokemonId)||`Pokemon ${b.wantedPokemonId}`)}</td><td>${b.dropPokemonId?esc(pokemonNames.get(b.dropPokemonId)||`Pokemon ${b.dropPokemonId}`):'—'}</td><td>$${b.amount}</td><td>${esc(b.status)}</td></tr>`).join('')||'<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
+      <tbody>${list.map(b=>`<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(pokemonNameForDisplay(b.wantedPokemonId))}</td><td>${esc(pokemonNameForDisplay(b.dropPokemonId))}</td><td>$${b.amount}</td><td>${esc(b.status)}</td></tr>`).join('')||'<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
   };
 
   window.renderBids = async function() {
