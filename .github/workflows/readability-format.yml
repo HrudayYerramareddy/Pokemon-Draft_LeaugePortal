@@ -53,4 +53,4 @@ jobs:
           git commit -m "Format all source files for readability"
           git push
 
-# Updating this workflow intentionally triggers the one-time formatting pass.
+# Retry after fixing the pre-existing display-fixes.js syntax error.
