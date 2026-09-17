@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
 public class LeaguePortalApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(LeaguePortalApplication.class, args);
-    }
+  public static void main(String[] args) {
+    SpringApplication.run(LeaguePortalApplication.class, args);
+  }
 }
