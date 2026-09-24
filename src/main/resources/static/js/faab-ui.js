@@ -15,11 +15,20 @@
     return pokemonNames.get(Number(id)) || "Unknown Pokémon";
   }
 
+  function bidPokemonName(b, kind) {
+    const name = b[kind === "wanted" ? "wantedPokemonName" : "dropPokemonName"];
+    const id = b[kind === "wanted" ? "wantedPokemonId" : "dropPokemonId"];
+    if (name) return name;
+    if (id == null) return "—";
+    const cached = pokemonNames.get(Number(id));
+    return cached || `Pokémon #${id} (not found)`;
+  }
+
   window.bidTable = function (list) {
     const manager = state.user.role === "MANAGER";
     return `<div class="card"><h2>${manager ? "All FAAB Bids" : "My FAAB Bids"}</h2>
       <div class="table-wrap"><table><thead><tr><th>Team</th><th>Free Agent</th><th>Drop If Won</th><th>Bid</th><th>Status</th></tr></thead>
-      <tbody>${list.map((b) => `<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(pokemonNameForDisplay(b.wantedPokemonId))}</td><td>${esc(pokemonNameForDisplay(b.dropPokemonId))}</td><td>$${b.amount}</td><td>${esc(b.status)}</td></tr>`).join("") || '<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
+      <tbody>${list.map((b) => `<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(bidPokemonName(b, "wanted"))}</td><td>${esc(bidPokemonName(b, "drop"))}</td><td>$${b.amount}</td><td>${esc(b.status)}</td></tr>`).join("") || '<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
   };
 
   window.renderBids = async function () {
