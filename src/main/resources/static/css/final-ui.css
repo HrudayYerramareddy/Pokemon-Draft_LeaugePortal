@@ -519,3 +519,53 @@
 .draft-cell-empty {
   background: rgba(120, 135, 170, 0.08);
 }
+
+
+/* Drafted Pokémon use the same image cards as the available Pokémon pool. */
+.draft-snake-table {
+  min-width: 2400px;
+  border-spacing: 6px;
+}
+
+.draft-snake-table thead th:not(:first-child) {
+  width: 145px;
+}
+
+.draft-snake-table td {
+  height: 178px;
+  padding: 5px;
+}
+
+.draft-snake-table .draft-board-pokemon {
+  width: 100%;
+  min-height: 150px;
+  height: 100%;
+  margin: 0;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.draft-snake-table .draft-board-pokemon .pokemon-art {
+  height: 90px;
+  min-height: 90px;
+}
+
+.draft-snake-table .draft-board-pokemon .pokemon-art img {
+  max-height: 86px;
+  object-fit: contain;
+}
+
+.draft-snake-table .draft-board-pokemon .pokemon-card-body {
+  padding: 4px;
+}
+
+.draft-snake-table .draft-board-pokemon .poke-meta {
+  display: none;
+}
+
+.draft-on-clock,
+.draft-empty-slot {
+  display: block;
+  padding: 45px 4px;
+  font-weight: 700;
+}
