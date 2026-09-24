@@ -102,27 +102,6 @@ public class LeagueFlowController {
     return out;
   }
 
-  public record FaabTradeRequest(
-      Long recipientTeamId,
-      List<Long> offeredPokemonIds,
-      List<Long> requestedPokemonIds,
-      Integer proposerFaab,
-      Integer recipientFaab) {}
-
-  @PostMapping("/trades")
-  public TradeOffer trade(@RequestBody FaabTradeRequest r, HttpSession session) {
-    AppUser u = auth.current(session);
-    if (u.getRole() == Role.MANAGER)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager cannot offer trade");
-    return freeAgency.offerTrade(
-        u.getTeamId(),
-        r.recipientTeamId(),
-        r.offeredPokemonIds(),
-        r.requestedPokemonIds(),
-        r.proposerFaab() == null ? 0 : r.proposerFaab(),
-        r.recipientFaab() == null ? 0 : r.recipientFaab());
-  }
-
   private List<Map<String, Object>> rosterView(Long teamId) {
     List<Map<String, Object>> out = new ArrayList<>();
     for (RosterEntry e : roster.findByTeamId(teamId)) {
