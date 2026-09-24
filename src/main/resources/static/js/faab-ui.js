@@ -8,6 +8,8 @@
     all.forEach((p) => pokemonNames.set(Number(p.id), p.name));
   }
 
+  window.loadFaabPokemonNames = loadPokemonNames;
+
   function pokemonNameForDisplay(id) {
     if (id == null) return "—";
     return pokemonNames.get(Number(id)) || "Unknown Pokémon";
