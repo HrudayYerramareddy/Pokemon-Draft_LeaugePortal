@@ -441,3 +441,81 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* Live draft board: one team per column, with alternating snake rounds. */
+.live-draft-board {
+  margin-bottom: 24px;
+}
+
+.draft-board-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border-radius: 12px;
+}
+
+.draft-snake-table {
+  width: 100%;
+  min-width: 1800px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 4px;
+  text-align: center;
+}
+
+.draft-snake-table th,
+.draft-snake-table td {
+  padding: 10px 6px;
+  border-radius: 8px;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.draft-snake-table thead th {
+  background: rgba(120, 135, 170, 0.18);
+  min-width: 100px;
+}
+
+.draft-snake-table thead th:first-child,
+.draft-snake-table .draft-round-heading {
+  width: 65px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #252d40;
+  color: #fff;
+}
+
+.draft-team-position,
+.draft-pick-number {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.draft-team-name,
+.draft-pokemon-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.draft-round-heading span {
+  display: block;
+  font-size: 18px;
+}
+
+.draft-cell-picked {
+  background: rgba(65, 145, 120, 0.18);
+}
+
+.draft-cell-current {
+  background: rgba(245, 184, 55, 0.35);
+  outline: 2px solid #e5a91f;
+}
+
+.draft-cell-empty {
+  background: rgba(120, 135, 170, 0.08);
+}
