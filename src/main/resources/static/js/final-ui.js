@@ -407,11 +407,11 @@ renderBids = async function () {
       await api("/api/free-agency/bids", {
         method: "POST",
         body: {
-          pokemonWantedId: wanted,
-          pokemonDroppedId: $("#bid-drop").value
+          wantedPokemonId: wanted,
+          dropPokemonId: $("#bid-drop").value
             ? Number($("#bid-drop").value)
             : null,
-          bidAmount: Number($("#bid-amount").value || 0),
+          amount: Number($("#bid-amount").value || 0),
         },
       });
       toast("Blind bid submitted");
