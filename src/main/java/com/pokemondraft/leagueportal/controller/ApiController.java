@@ -305,11 +305,26 @@ public class ApiController {
   }
 
   @GetMapping("/free-agency/bids")
-  public List<FreeAgentBid> bids(HttpSession session) {
+  public List<Map<String, Object>> bids(HttpSession session) {
     AppUser u = auth.current(session);
-    return u.getRole() == Role.MANAGER
+    List<FreeAgentBid> visible = u.getRole() == Role.MANAGER
         ? bids.findAll()
         : bids.findByTeamIdOrderByCreatedAtDesc(u.getTeamId());
+    Map<Long, String> names = pokemon.findAll().stream()
+        .collect(Collectors.toMap(Pokemon::getId, Pokemon::getName));
+    return visible.stream().map(b -> {
+      Map<String, Object> result = new LinkedHashMap<>();
+      result.put("id", b.getId());
+      result.put("teamId", b.getTeamId());
+      result.put("wantedPokemonId", b.getWantedPokemonId());
+      result.put("dropPokemonId", b.getDropPokemonId());
+      result.put("wantedPokemonName", names.get(b.getWantedPokemonId()));
+      result.put("dropPokemonName", names.get(b.getDropPokemonId()));
+      result.put("amount", b.getAmount());
+      result.put("status", b.getStatus());
+      result.put("createdAt", b.getCreatedAt());
+      return result;
+    }).toList();
   }
 
   @PostMapping("/manager/free-agency/process")
