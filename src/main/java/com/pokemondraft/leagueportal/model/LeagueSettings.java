@@ -13,6 +13,8 @@ public class LeagueSettings {
   private boolean snakeDraft = true;
   private long scheduleSeed = 2026L;
   private LocalDateTime lineupDeadline;
+  @Column(length = 4096)
+  private String draftWheelResults = "";
 
   public LeagueSettings() {}
 
@@ -75,6 +77,10 @@ public class LeagueSettings {
   public void setLineupDeadline(LocalDateTime v) {
     lineupDeadline = v;
   }
+
+  public String getDraftWheelResults() { return draftWheelResults == null ? "" : draftWheelResults; }
+
+  public void setDraftWheelResults(String value) { draftWheelResults = value; }
 
   @Transient
   public boolean isPlayoffSeedModeEnabled() {
