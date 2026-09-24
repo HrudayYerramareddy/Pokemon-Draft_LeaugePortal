@@ -66,7 +66,7 @@
       document.querySelector("#draft-wheel-status").textContent = `${winner.name} receives pick ${winner.position}!`;
       await refreshBase();
     } catch(e) { toast(e.message,true); }
-    finally { active = false; const b=document.querySelector("#draft-wheel-spin"); if(b && snapshot && !snapshot.complete)b.disabled=false; }
+    finally { active = false; if (snapshot && document.querySelector("#draft-wheel-panel")) draw(snapshot); }
   }
 
   async function reset() {
@@ -85,6 +85,10 @@
     }
     active = true;
     const official = snapshot;
+    const replayButton = document.querySelector("#draft-wheel-replay");
+    const videoButton = document.querySelector("#draft-wheel-video");
+    if (replayButton) replayButton.disabled = true;
+    if (videoButton) videoButton.disabled = true;
     const overlay = document.createElement("div");
     overlay.className = "pokemon-detail-overlay";
     overlay.style.zIndex = "3000";
