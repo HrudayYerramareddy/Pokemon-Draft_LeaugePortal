@@ -19,6 +19,7 @@
     const count = teams.length;
     const rounds = 10;
     const picks = new Map(d.picks.map((p) => [Number(p.overallPick), p]));
+    const pokemonById = new Map(d.available.map((p) => [p.id, p]));
     const currentPick = d.picks.length + 1;
 
     const headers = teams
@@ -48,15 +49,18 @@
             : onClock
               ? "draft-cell-current"
               : "draft-cell-empty";
-          const name = pick
-            ? esc(pick.pokemonName || "Unknown Pokémon")
+          const pokemon = pick
+            ? { ...pokemonById.get(pick.pokemonId), id: pick.pokemonId, name: pick.pokemonName }
+            : null;
+          const content = pokemon
+            ? pokemonCard(pokemon, "draft-board-pokemon")
             : onClock
-              ? "ON THE CLOCK"
-              : "—";
+              ? '<span class="draft-on-clock">ON THE CLOCK</span>'
+              : '<span class="draft-empty-slot">—</span>';
 
           return `<td class="${className}" title="Round ${round}, pick ${overall}: ${esc(team.name)}">
             <span class="draft-pick-number">Pick ${overall}</span>
-            <span class="draft-pokemon-name">${name}</span>
+            ${content}
           </td>`;
         })
         .join("");
@@ -93,14 +97,25 @@
     if (!page) return;
 
     // Remove the older chronological table and put the snake board above the picker.
-    const oldBoard = [...page.querySelectorAll(".card")].find(
-      (card) => card.querySelector("h2")?.textContent.trim() === "Draft Board",
-    );
-    oldBoard?.remove();
+    // The original chronological board is a direct child of the page.
+    // Match its own heading, not a nested heading from another card.
+    [...page.children]
+      .filter((element) => element.classList.contains("card"))
+      .filter((card) => card.querySelector(":scope > h2")?.textContent.trim() === "Draft Board")
+      .forEach((card) => card.remove());
 
     const title = page.querySelector(".section-title");
     if (title) title.insertAdjacentHTML("afterend", buildBoard(d));
     else page.insertAdjacentHTML("afterbegin", buildBoard(d));
+
+    const board = page.querySelector(".live-draft-board");
+    board?.querySelectorAll(".draft-board-pokemon").forEach((card) => {
+      card.addEventListener("click", () => {
+        const pick = d.picks.find((p) => String(p.pokemonId) === card.dataset.pokemonId);
+        if (pick) showPokemonDetails({ id: pick.pokemonId, name: pick.pokemonName });
+      });
+    });
+    if (board) hydratePokemonCards(board);
   };
 
   async function checkDraft() {
