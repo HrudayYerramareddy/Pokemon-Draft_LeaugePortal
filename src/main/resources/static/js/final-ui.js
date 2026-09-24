@@ -275,7 +275,7 @@ async function wireFinalFilters(prefix, source, draw) {
 renderStandings = async function () {
   const s = await api("/api/standings");
   const panel = (name, rows) =>
-    `<section class="glass-panel team-view"><div class="eyebrow">Division ${name}</div><h2>Division ${name}</h2><div class="standing-row standing-labels"><span>#</span><span>Team</span><span>W</span><span>L</span><span>Diff</span></div>${rows.map((t, i) => `<div class="standing-row"><span class="standing-rank">${i + 1}</span><span class="standing-team">${esc(t.name)}</span><span>${t.wins}</span><span>${t.losses}</span><span>${t.differential >= 0 ? "+" : ""}${t.differential}</span></div>`).join("")}</section>`;
+    `<section class="glass-panel team-view"><div class="eyebrow">Division ${name}</div><h2>Division ${name}</h2><div class="standing-row standing-labels"><span>#</span><span>Team</span><span>W</span><span>L</span><span>Diff</span></div>${rows.map((t, i) => `<div class="standing-row ${i < 4 ? "playoff-qualified" : ""}"><span class="standing-rank">${i + 1}</span><span class="standing-team">${esc(t.name)}${i < 4 ? ' <small class="playoff-label">Playoff position</small>' : ""}</span><span>${t.wins}</span><span>${t.losses}</span><span>${t.differential >= 0 ? "+" : ""}${t.differential}</span></div>`).join("")}</section>`;
   $("#page-standings").innerHTML =
     `${hero("Regular Season", "Standings", "Wins → Differential → Head-to-Head → Team")}<div class="standings-grid">${panel("A", s.A)}${panel("B", s.B)}</div>`;
 };
