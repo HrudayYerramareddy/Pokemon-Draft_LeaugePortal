@@ -26,7 +26,6 @@ public class ApiController {
   private final WeeklySubmissionRepository submissions;
   private final FreeAgentBidRepository bids;
   private final FreeAgencyService freeAgency;
-  private final TradeOfferRepository trades;
   private final TransactionRecordRepository transactions;
 
   public ApiController(
@@ -42,7 +41,6 @@ public class ApiController {
       WeeklySubmissionRepository submissions,
       FreeAgentBidRepository bids,
       FreeAgencyService freeAgency,
-      TradeOfferRepository trades,
       TransactionRecordRepository transactions) {
     this.auth = auth;
     this.teams = teams;
@@ -56,7 +54,6 @@ public class ApiController {
     this.submissions = submissions;
     this.bids = bids;
     this.freeAgency = freeAgency;
-    this.trades = trades;
     this.transactions = transactions;
   }
 
@@ -319,45 +316,6 @@ public class ApiController {
   public Map<String, Integer> process(HttpSession session) {
     auth.manager(session);
     return Map.of("winners", freeAgency.processBids());
-  }
-
-  public record TradeRequest(
-      Long recipientTeamId,
-      List<Long> offeredPokemonIds,
-      List<Long> requestedPokemonIds,
-      Integer proposerFaab,
-      Integer recipientFaab) {}
-
-  @PostMapping("/trades")
-  public TradeOffer trade(@RequestBody TradeRequest r, HttpSession session) {
-    AppUser u = auth.current(session);
-    if (u.getRole() == Role.MANAGER)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager cannot offer trade");
-    return freeAgency.offerTrade(
-        u.getTeamId(),
-        r.recipientTeamId(),
-        r.offeredPokemonIds(),
-        r.requestedPokemonIds(),
-        r.proposerFaab() == null ? 0 : r.proposerFaab(),
-        r.recipientFaab() == null ? 0 : r.recipientFaab());
-  }
-
-  @GetMapping("/trades")
-  public List<TradeOffer> trades(HttpSession session) {
-    AppUser u = auth.current(session);
-    return u.getRole() == Role.MANAGER
-        ? trades.findAll()
-        : trades.findByProposerTeamIdOrRecipientTeamIdOrderByCreatedAtDesc(
-            u.getTeamId(), u.getTeamId());
-  }
-
-  public record TradeResponse(boolean accept) {}
-
-  @PostMapping("/trades/{id}/respond")
-  public TradeOffer respond(
-      @PathVariable Long id, @RequestBody TradeResponse r, HttpSession session) {
-    AppUser u = auth.current(session);
-    return freeAgency.respondTrade(id, u.getTeamId(), u.getRole() == Role.MANAGER, r.accept());
   }
 
   @GetMapping("/transactions")
