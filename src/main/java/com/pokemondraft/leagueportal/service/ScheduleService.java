@@ -114,11 +114,6 @@ public class ScheduleService {
     Map<String, Integer> h2h = headToHead();
     list.sort(
         (x, y) -> {
-          if (x.getManualRank() > 0 || y.getManualRank() > 0) {
-            int xr = x.getManualRank() == 0 ? 999 : x.getManualRank(),
-                yr = y.getManualRank() == 0 ? 999 : y.getManualRank();
-            if (xr != yr) return Integer.compare(xr, yr);
-          }
           if (x.getWins() != y.getWins()) return Integer.compare(y.getWins(), x.getWins());
           if (x.getDifferential() != y.getDifferential())
             return Integer.compare(y.getDifferential(), x.getDifferential());
