@@ -337,6 +337,7 @@ renderDraft = async function () {
     };
 };
 renderBids = async function () {
+  await window.loadFaabPokemonNames();
   const list = await api("/api/free-agency/bids"),
     free = await api("/api/pokemon/free-agents");
   if (state.user.role === "MANAGER") {
