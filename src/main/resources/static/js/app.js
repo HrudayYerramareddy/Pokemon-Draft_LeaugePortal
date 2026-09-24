@@ -266,7 +266,6 @@ async function renderFreeAgency(tab = "bids") {
     b.addEventListener("click", () => renderFreeAgency(b.dataset.fa)),
   );
   if (tab === "bids") await renderBids();
-  if (tab === "trades") await renderTrades();
   if (tab === "transactions") await renderTransactions();
 }
 async function renderBids() {
@@ -313,83 +312,6 @@ function bidTable(list) {
   return `<div class="card"><h2>${state.user.role === "MANAGER" ? "All Bids" : "My Bids"}</h2><div class="table-wrap"><table><thead><tr><th>Team</th><th>Wanted ID</th><th>Drop ID</th><th>Amount</th><th>Status</th></tr></thead><tbody>${list.map((b) => `<tr><td>${esc(teamName(b.teamId))}</td><td>${b.wantedPokemonId}</td><td>${b.dropPokemonId ?? "—"}</td><td>$${b.amount}</td><td>${b.status}</td></tr>`).join("") || '<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
 }
 
-async function renderTrades() {
-  const list = await api("/api/trades");
-  if (state.user.role === "MANAGER") {
-    $("#fa-content").innerHTML =
-      `<div class="card"><h2>All Trades</h2>${tradeTable(list)}</div>`;
-    bindTradeButtons();
-    return;
-  }
-  const mine = await api(`/api/rosters/${state.user.teamId}`);
-  const all = await api("/api/rosters");
-  $("#fa-content").innerHTML =
-    `<div class="card"><h2>Propose Trade</h2><div class="toolbar"><select id="trade-recipient"><option value="">Team</option>${state.teams
-      .filter((t) => t.id !== state.user.teamId)
-      .map((t) => `<option value="${t.id}">${esc(t.name)}</option>`)
-      .join(
-        "",
-      )}</select><select id="trade-offered"><option value="">Your Pokemon</option>${mine.map((p) => `<option value="${p.pokemonId}">${esc(p.name)}</option>`).join("")}</select><select id="trade-requested"><option value="">Their Pokemon</option></select><button id="offer-trade" class="primary">Offer Trade</button></div></div><div class="card"><h2>My Trades</h2>${tradeTable(list)}</div>`;
-  $("#trade-recipient").addEventListener("change", () => {
-    const r = all.find(
-      (x) => x.team.id === Number($("#trade-recipient").value),
-    );
-    $("#trade-requested").innerHTML =
-      '<option value="">Their Pokemon</option>' +
-      (r
-        ? r.pokemon
-            .map(
-              (p) => `<option value="${p.pokemonId}">${esc(p.name)}</option>`,
-            )
-            .join("")
-        : "");
-  });
-  $("#offer-trade").addEventListener("click", async () => {
-    const recipient = Number($("#trade-recipient").value),
-      offered = Number($("#trade-offered").value),
-      requested = Number($("#trade-requested").value);
-    if (!recipient || !offered || !requested)
-      return toast("Complete all trade fields", true);
-    try {
-      await api("/api/trades", {
-        method: "POST",
-        body: {
-          recipientTeamId: recipient,
-          offeredPokemonId: offered,
-          requestedPokemonId: requested,
-        },
-      });
-      toast("Trade offered");
-      await renderTrades();
-    } catch (e) {
-      toast(e.message, true);
-    }
-  });
-  bindTradeButtons();
-}
-function tradeTable(list) {
-  return `<div class="table-wrap"><table><thead><tr><th>From</th><th>To</th><th>Offered ID</th><th>Requested ID</th><th>Status</th><th>Action</th></tr></thead><tbody>${list.map((t) => `<tr><td>${esc(teamName(t.proposerTeamId))}</td><td>${esc(teamName(t.recipientTeamId))}</td><td>${t.offeredPokemonId}</td><td>${t.requestedPokemonId}</td><td>${t.status}</td><td>${t.status === "PENDING" && (state.user.role === "MANAGER" || t.recipientTeamId === state.user.teamId) ? `<button class="primary accept-trade" data-id="${t.id}">Accept</button> <button class="secondary reject-trade" data-id="${t.id}">Reject</button>` : "—"}</td></tr>`).join("") || '<tr><td colspan="6">No trades yet</td></tr>'}</tbody></table></div>`;
-}
-function bindTradeButtons() {
-  $$(".accept-trade").forEach((b) =>
-    b.addEventListener("click", () => respondTrade(b.dataset.id, true)),
-  );
-  $$(".reject-trade").forEach((b) =>
-    b.addEventListener("click", () => respondTrade(b.dataset.id, false)),
-  );
-}
-async function respondTrade(id, accept) {
-  try {
-    await api(`/api/trades/${id}/respond`, {
-      method: "POST",
-      body: { accept },
-    });
-    toast(accept ? "Trade accepted" : "Trade rejected");
-    await renderTrades();
-  } catch (e) {
-    toast(e.message, true);
-  }
-}
 async function renderTransactions() {
   const list = await api("/api/transactions");
   $("#fa-content").innerHTML =
