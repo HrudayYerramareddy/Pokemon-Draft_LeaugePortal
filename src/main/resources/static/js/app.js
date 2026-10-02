@@ -194,7 +194,7 @@ async function renderSchedule() {
   const by = {};
   data.forEach((m) => (by[m.week] ??= []).push(m));
   $("#page-schedule").innerHTML =
-    `<div class="section-title"><div><h1>Schedule / Results</h1><p class="muted">Weeks 1–7 are divisional round robin. Weeks 8–10 are balanced cross-division matchups.</p></div></div>${Object.keys(
+    `<div class="section-title"><div><h1>Schedule / Results</h1><p class="muted">Weeks 1–3 are randomized cross-division matchups. Weeks 4–10 are divisional round robin.</p></div></div>${Object.keys(
       by,
     )
       .map(
