@@ -17,6 +17,7 @@ public class DataInitializer {
       PokemonRepository pokemon,
       LeagueSettingsRepository settings,
       MatchupRepository matchups,
+      RosterEntryRepository roster,
       ScheduleService schedule) {
     return args -> {
       if (settings.count() == 0) settings.save(new LeagueSettings());
@@ -41,6 +42,18 @@ public class DataInitializer {
           if (pokemon.findByName(name).isEmpty())
             pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
       }
+      // RosterEntry is the source of truth for current ownership. Repair only
+      // the derived Pokemon.drafted flag; never rebuild or remove roster rows.
+      Set<Long> rosteredPokemonIds = new HashSet<>();
+      for (RosterEntry entry : roster.findAll()) rosteredPokemonIds.add(entry.getPokemonId());
+      for (Pokemon p : pokemon.findAll()) {
+        boolean shouldBeDrafted = rosteredPokemonIds.contains(p.getId());
+        if (p.isDrafted() != shouldBeDrafted) {
+          p.setDrafted(shouldBeDrafted);
+          pokemon.save(p);
+        }
+      }
+
       if (matchups.count() == 0 && teams.count() == 16) schedule.generate();
     };
   }
