@@ -434,6 +434,48 @@ select option {
 .standing-team {
   font-weight: 750;
 }
+.playoff-qualified {
+  background: linear-gradient(90deg, rgba(49, 134, 211, 0.08), transparent 72%);
+}
+.playoff-seed-1 .standing-rank {
+  background: rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(255, 215, 90, 0.45);
+  color: #ffe08a;
+  box-shadow: 0 0 14px rgba(212, 175, 55, 0.12);
+}
+.playoff-seed-2 .standing-rank {
+  background: rgba(192, 205, 218, 0.15);
+  border: 1px solid rgba(218, 229, 239, 0.32);
+  color: #e1ebf3;
+}
+.playoff-seed-3 .standing-rank {
+  background: rgba(190, 120, 72, 0.18);
+  border: 1px solid rgba(221, 151, 98, 0.36);
+  color: #eab07d;
+}
+.playoff-seed-4 .standing-rank {
+  background: rgba(71, 167, 224, 0.16);
+  border: 1px solid rgba(103, 193, 245, 0.34);
+  color: #9edcff;
+}
+.playoff-cutoff {
+  position: relative;
+  margin-bottom: 9px;
+  border-bottom: 2px solid rgba(91, 181, 242, 0.58);
+}
+.playoff-cutoff::after {
+  content: "PLAYOFF CUTOFF";
+  position: absolute;
+  right: 10px;
+  bottom: -8px;
+  padding: 0 7px;
+  background: #0b2442;
+  color: #76bde9;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  line-height: 14px;
+}
 .standing-labels {
   font-size: 10px;
   color: #7191ae;
