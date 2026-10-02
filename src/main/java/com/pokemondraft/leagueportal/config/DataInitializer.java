@@ -34,32 +34,12 @@ public class DataInitializer {
       if (pokemon.count() == 0) {
         for (String name : championsPool()) pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
       } else {
+        // Existing league data is authoritative. On restart/deploy, only add
+        // newly supported Pokemon; never overwrite commissioner prices, roster
+        // state, or delete existing Pokemon from a live database.
         for (String name : championsPool())
           if (pokemon.findByName(name).isEmpty())
             pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
-        // Keep existing databases in sync with the official league price sheet.
-        for (Pokemon p : pokemon.findAll()) {
-          Integer price = basePrices.get(p.getName());
-          if (price != null && p.getPrice() != price) {
-            p.setPrice(price);
-            pokemon.save(p);
-          }
-        }
-        for (String oldName :
-            List.of(
-                "Meowstic",
-                "Lycanroc",
-                "Squawkabilly (Green)",
-                "Squawkabilly (Blue)",
-                "Squawkabilly (Yellow)",
-                "Squawkabilly (White)")) {
-          pokemon
-              .findByName(oldName)
-              .ifPresent(
-                  old -> {
-                    if (!old.isDrafted()) pokemon.delete(old);
-                  });
-        }
       }
       if (matchups.count() == 0 && teams.count() == 16) schedule.generate();
     };
