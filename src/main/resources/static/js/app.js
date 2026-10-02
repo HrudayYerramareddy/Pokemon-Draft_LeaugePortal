@@ -389,7 +389,7 @@ async function renderManager() {
     }
   });
   $("#price-sort").addEventListener("change", (e) => {
-    const rows = [...$("#price-body tr")];
+    const rows = [...document.querySelectorAll("#price-body tr")];
     rows.sort((a, b) => {
       const nameA = a.dataset.name;
       const nameB = b.dataset.name;
