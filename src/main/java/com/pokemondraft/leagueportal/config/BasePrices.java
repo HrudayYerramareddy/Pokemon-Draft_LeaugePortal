@@ -20,11 +20,11 @@ final class BasePrices {
 11:Meowstic (Male)|Starmie|Slowking (Galarian)|Jolteon|Arcanine|Clawitzer|Aggron|Umbreon|Skarmory|Skeledirge|Gliscor|Spiritomb
 10:Hawlucha|Azumarill|Audino|Ampharos|Eelektross|Steelix|Slowbro|Abomasnow|Crabominable|Raichu (Alolan)|Ditto|Heliolisk|Slowbro (Galarian)
 9:Houndoom|Serperior|Houndstone|Alcremie|Noivern|Golurk|Palafin|Dragalge|Krookodile|Infernape|Chesnaught|Feraligatr
-8:Hippowdon|Conkeldurr|Manectric|Wyrdeer|Espeon|Perrserker|Salazzle|Arboliva|Glaceon|Mudsdale|Vileplume
+8:Cofagrigus|Hippowdon|Conkeldurr|Manectric|Wyrdeer|Espeon|Perrserker|Salazzle|Arboliva|Glaceon|Mudsdale|Vileplume
 7:Decidueye (Hisuian)|Wigglytuff|Reuniclus|Mr. Mime|Persian (Alolan)|Vaporeon|Rhyperior|Torterra|Heracross|Medicham|Aurorus|Typhlosion
 6:Scolipede|Machamp|Runerigus|Mr. Rime|Tauros (Paldean Blaze)|Pikachu|Glalie|Beedrill|Pidgeot|Aromatisse|Banette|Quaquaval|Tauros (Paldean Aqua)
 5:Liepard|Hydrapple|Slowking|Morpeko|Toxicroak|Orthworm|Garganacl|Squawkabilly|Sharpedo|Zoroark|Tyrantrum
-4:Gogoat|Mabosstiff|Slurpuff|Thievul|Pangoro|Lycanroc (Midday)|Emboar|Victreebel|Florges|Chimecho|Goodra|Trevenant|Farfetch'd
+4:Rampardos|Gogoat|Mabosstiff|Slurpuff|Thievul|Pangoro|Lycanroc (Midday)|Emboar|Victreebel|Florges|Chimecho|Goodra|Trevenant|Farfetch'd
 3:Leafeon|Beartic|Rotom Frost|Musharna|Avalugg (Hisuian)|Toucannon|Swalot|Luxray|Rotom Mow|Falinks|Bastiodon
 2:Diggersby|Roserade|Gourgeist|Pinsir|Polteageist|Emolga|Flareon|Arbok|Barbaracle|Dedenne|Decidueye|Flapple|Passimian
 1:Castform|Persian|Sandaconda|Stunfisk|Forretress|Ariados|Appletun|Qwilfish|Lycanroc (Midnight)|Furfrou|Rotom Fan|Avalugg
