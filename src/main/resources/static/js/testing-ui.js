@@ -52,17 +52,16 @@
     document
       .querySelector("#clear-test-rosters")
       .addEventListener("click", async () => {
-        if (
-          !confirm(
-            "Clear ALL rosters, draft picks, and weekly lineup submissions? Use this only for testing/resetting.",
-          )
-        )
-          return;
+        const confirmation = prompt(
+          'This permanently clears ALL rosters, draft picks, and weekly lineup submissions. Type "CLEAR ALL ROSTERS" to continue.',
+        );
+        if (confirmation !== "CLEAR ALL ROSTERS") return;
         const button = document.querySelector("#clear-test-rosters");
         button.disabled = true;
         try {
           const result = await api("/api/manager/testing/clear-rosters", {
             method: "POST",
+            body: JSON.stringify({ confirmation }),
           });
           toast(`Cleared ${result.pokemonRemoved} roster assignments`);
           await refreshBase();
