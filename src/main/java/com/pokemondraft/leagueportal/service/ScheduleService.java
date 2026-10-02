@@ -30,21 +30,25 @@ public class ScheduleService {
     a.sort(order);
     b.sort(order);
     matchups.deleteAll();
-    addRoundRobin(a, 1);
-    addRoundRobin(b, 1);
     LeagueSettings s = settingsRepo.findById(1L).orElseGet(LeagueSettings::new);
+
+    // Weeks 1-3: three randomized cross-division matchups per team.
     List<Integer> shifts = new ArrayList<>();
     for (int i = 0; i < 8; i++) shifts.add(i);
     Collections.shuffle(shifts, new Random(s.getScheduleSeed()));
     for (int r = 0; r < 3; r++) {
       int shift = shifts.get(r);
-      int week = 8 + r;
+      int week = 1 + r;
       for (int i = 0; i < 8; i++) {
         Team left = a.get(i), right = b.get((i + shift) % 8);
         if ((i + r) % 2 == 0) matchups.save(new Matchup(week, left.getId(), right.getId()));
         else matchups.save(new Matchup(week, right.getId(), left.getId()));
       }
     }
+
+    // Weeks 4-10: every team plays each of its seven division opponents once.
+    addRoundRobin(a, 4);
+    addRoundRobin(b, 4);
   }
 
   private void addRoundRobin(List<Team> division, int startWeek) {
