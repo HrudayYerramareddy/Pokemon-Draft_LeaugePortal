@@ -30,14 +30,21 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, "password", Role.COACH, saved.get(i - 1).getId()));
       }
+      Map<String, Integer> basePrices = BasePrices.values();
       if (pokemon.count() == 0) {
-        Random random = new Random(20260909L);
-        for (String name : championsPool()) pokemon.save(new Pokemon(name, random.nextInt(21)));
+        for (String name : championsPool()) pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
       } else {
-        Random random = new Random(20260909L);
         for (String name : championsPool())
           if (pokemon.findByName(name).isEmpty())
-            pokemon.save(new Pokemon(name, random.nextInt(21)));
+            pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
+        // Keep existing databases in sync with the official league price sheet.
+        for (Pokemon p : pokemon.findAll()) {
+          Integer price = basePrices.get(p.getName());
+          if (price != null && p.getPrice() != price) {
+            p.setPrice(price);
+            pokemon.save(p);
+          }
+        }
         for (String oldName :
             List.of(
                 "Meowstic",
