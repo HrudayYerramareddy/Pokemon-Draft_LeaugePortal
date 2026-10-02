@@ -330,7 +330,7 @@ async function renderManager() {
   <div class="card"><h2>League Settings</h2><div class="toolbar"><label>Name <input id="setting-name" value="${esc(state.settings.leagueName)}"></label><label>Week <input id="setting-week" type="number" min="1" max="10" value="${state.settings.currentWeek}"></label><label>Lineup deadline <input id="setting-deadline" type="datetime-local" value="${state.settings.lineupDeadline ? String(state.settings.lineupDeadline).slice(0, 16) : ""}"></label><label><input id="setting-draft" type="checkbox" ${state.settings.draftOpen ? "checked" : ""}> Draft open</label><label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label><button id="save-settings" class="primary">Save Settings</button></div></div>
   <div class="card"><div class="section-title"><div><h2>Teams / Divisions / Draft Order</h2><p class="muted">Manual rank 0 = automatic standings. Use 1–8 only when you want to force placement.</p></div></div><div class="table-wrap"><table><thead><tr><th>Team</th><th>Coach</th><th>Division</th><th>Draft Pos</th><th>Manual Rank</th><th>FAAB</th><th></th></tr></thead><tbody>${state.teams.map((t) => `<tr><td><input id="team-name-${t.id}" value="${esc(t.name)}"></td><td><input id="coach-name-${t.id}" value="${esc(t.coachName)}"></td><td><select id="division-${t.id}"><option ${t.division === "A" ? "selected" : ""}>A</option><option ${t.division === "B" ? "selected" : ""}>B</option></select></td><td><input id="draft-pos-${t.id}" class="inline-input" type="number" min="1" max="16" value="${t.draftPosition}"></td><td><input id="rank-${t.id}" class="inline-input" type="number" min="0" max="8" value="${t.manualRank}"></td><td><input id="budget-${t.id}" class="inline-input" type="number" min="0" value="${t.faBudget}"></td><td><button class="secondary save-team" data-id="${t.id}">Save</button></td></tr>`).join("")}</tbody></table></div></div>
   <div class="card"><h2>Schedule Generator</h2><p>Exactly 7 same-division opponents + 3 balanced cross-division opponents. Changing the random seed changes the cross-division matchups.</p><div class="toolbar"><input id="schedule-seed" type="number" value="${state.settings.scheduleSeed}"><button id="regenerate-schedule" class="danger">Regenerate Entire Schedule</button></div></div>
-  <div class="card"><div class="section-title"><div><h2>Pokemon Draft Prices</h2><p class="muted">Prototype values are $0–$20 and can all be changed.</p></div><input id="price-search" placeholder="Search Pokemon"></div><div class="table-wrap price-table"><table><thead><tr><th>Pokemon</th><th>Price</th><th>Drafted</th><th></th></tr></thead><tbody id="price-body">${mons.map((p) => priceRow(p)).join("")}</tbody></table></div></div>
+  <div class="card"><div class="section-title"><div><h2>Pokemon Draft Prices</h2><p class="muted">Prototype values are $0–$20 and can all be changed.</p></div><div class="toolbar"><input id="price-search" placeholder="Search Pokemon"><select id="price-sort"><option value="name">Name A-Z</option><option value="price-high">Price High to Low</option><option value="price-low">Price Low to High</option></select></div></div><div class="table-wrap price-table"><table><thead><tr><th>Pokemon</th><th>Price</th><th>Drafted</th><th></th></tr></thead><tbody id="price-body">${mons.map((p) => priceRow(p)).join("")}</tbody></table></div></div>
   </div>`;
   $("#save-settings").addEventListener("click", async () => {
     try {
@@ -387,6 +387,19 @@ async function renderManager() {
     } catch (e) {
       toast(e.message, true);
     }
+  });
+  $("#price-sort").addEventListener("change", (e) => {
+    const rows = [...$("#price-body tr")];
+    rows.sort((a, b) => {
+      const nameA = a.dataset.name;
+      const nameB = b.dataset.name;
+      const priceA = Number(a.querySelector("input").value);
+      const priceB = Number(b.querySelector("input").value);
+      if (e.target.value === "price-high") return priceB - priceA || nameA.localeCompare(nameB);
+      if (e.target.value === "price-low") return priceA - priceB || nameA.localeCompare(nameB);
+      return nameA.localeCompare(nameB);
+    });
+    rows.forEach((row) => $("#price-body").appendChild(row));
   });
   $("#price-search").addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase();
