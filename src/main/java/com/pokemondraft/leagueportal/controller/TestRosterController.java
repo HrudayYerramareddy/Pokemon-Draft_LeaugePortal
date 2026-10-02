@@ -5,6 +5,7 @@ import com.pokemondraft.leagueportal.service.TestRosterService;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,9 +26,17 @@ public class TestRosterController {
     return testRosters.fillTestRosters();
   }
 
+  public record ClearRostersRequest(String confirmation) {}
+
   @PostMapping("/clear-rosters")
-  public Map<String, Integer> clearRosters(HttpSession session) {
+  public Map<String, Integer> clearRosters(
+      @RequestBody ClearRostersRequest request, HttpSession session) {
     auth.manager(session);
+    if (request == null || !"CLEAR ALL ROSTERS".equals(request.confirmation())) {
+      throw new org.springframework.web.server.ResponseStatusException(
+          org.springframework.http.HttpStatus.BAD_REQUEST,
+          "Type CLEAR ALL ROSTERS to confirm this destructive test reset.");
+    }
     return testRosters.clearRosters();
   }
 }
