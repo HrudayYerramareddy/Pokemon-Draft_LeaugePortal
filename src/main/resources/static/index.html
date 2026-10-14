@@ -16,19 +16,13 @@
         <div class="eyebrow">League Portal</div>
         <h1>Pokemon Draft League</h1>
         <p class="muted">Sign in to manage your season.</p>
-        <label>Username<input id="login-username" value="manager" /></label
+        <label>Username<input id="login-username"  /></label
         ><label
           >Password<input
             id="login-password"
             type="password"
-            value="manager" /></label
+            /></label
         ><button id="login-button">Log In</button>
-        <div class="hint">
-          <strong>Manager:</strong> manager / manager<br /><strong
-            >Coach:</strong
-          >
-          coach1 through coach16 / password
-        </div>
       </div>
     </div>
     <div id="app" class="app hidden">
@@ -47,6 +41,7 @@
             Commissioner
           </button>
         </nav>
+        <button data-page="account">Account / Password</button>
         <button id="logout-button" class="logout">Log Out</button>
       </aside>
       <main class="content">
@@ -58,6 +53,7 @@
         <section id="page-lineup" class="page hidden"></section>
         <section id="page-freeagency" class="page hidden"></section>
         <section id="page-manager" class="page hidden"></section>
+        <section id="page-account" class="page hidden"></section>
       </main>
     </div>
     <script src="/js/app.js?v=30"></script>
@@ -70,5 +66,6 @@
     <script src="/js/league-fixes.js?v=30"></script>
     <script src="/js/form-ui-fixes.js?v=30"></script>
     <script src="/js/draft-live.js?v=30"></script>
+    <script src="/js/account-ui.js?v=31"></script>
   </body>
 </html>

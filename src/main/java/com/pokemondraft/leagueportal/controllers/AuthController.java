@@ -23,6 +23,23 @@ public class AuthController {
     return LeagueMapper.authUser(auth.login(req.username(), req.password(), session));
   }
 
+  public record ChangePasswordRequest(String currentPassword, String newPassword) {}
+
+  @PostMapping("/change-password")
+  public void changePassword(@RequestBody ChangePasswordRequest request, HttpSession session) {
+    auth.changePassword(session, request.currentPassword(), request.newPassword());
+  }
+
+  @GetMapping("/manager/users")
+  public java.util.List<java.util.Map<String, Object>> resettableUsers(HttpSession session) {
+    return auth.resettableUsers(session);
+  }
+
+  @PostMapping("/manager/users/{id}/reset-password")
+  public void resetPassword(@PathVariable Long id, HttpSession session) {
+    auth.resetPassword(session, id);
+  }
+
   @PostMapping("/logout")
   public void logout(HttpSession session) {
     session.invalidate();

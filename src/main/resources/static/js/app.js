@@ -106,6 +106,7 @@ async function showPage(page) {
     if (page === "lineup") await renderLineup();
     if (page === "freeagency") await renderFreeAgency("bids");
     if (page === "manager") await renderManager();
+    if (page === "account") await renderAccount();
   } catch (e) {
     $(`#page-${page}`).innerHTML =
       `<div class="card"><h2>Page error</h2><p>${esc(e.message)}</p></div>`;

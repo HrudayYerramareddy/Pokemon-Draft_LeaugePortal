@@ -4,6 +4,7 @@ import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.ScheduleService;
 import java.util.*;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,9 +28,10 @@ public class DataInitializer {
           String div = i <= 8 ? "A" : "B";
           saved.add(teams.save(new Team("Team " + i, "Coach " + i, div, i)));
         }
-        users.save(new AppUser("manager", "manager", Role.MANAGER, null));
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        users.save(new AppUser("manager", encoder.encode("manager"), Role.MANAGER, null));
         for (int i = 1; i <= 16; i++)
-          users.save(new AppUser("coach" + i, "password", Role.COACH, saved.get(i - 1).getId()));
+          users.save(new AppUser("coach" + i, encoder.encode("password"), Role.COACH, saved.get(i - 1).getId()));
       }
       for (Team t : teams.findAll()) {
         if (t.getFaBudget() == 100) {

@@ -4,6 +4,8 @@ import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.AppUserRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -11,21 +13,70 @@ import org.springframework.web.server.ResponseStatusException;
 public class AuthService {
   public static final String SESSION_USER_ID = "userId";
   private final AppUserRepository users;
+  private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
   public AuthService(AppUserRepository users) {
     this.users = users;
   }
 
+  @Transactional
   public AppUser login(String username, String password, HttpSession session) {
     AppUser user =
         users
             .findByUsername(username)
             .orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login"));
-    if (!user.getPassword().equals(password))
+    if (password == null || !matches(password, user.getPassword()))
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login");
+    if (!isHashed(user.getPassword())) {
+      user.setPassword(encoder.encode(password));
+      users.save(user);
+    }
     session.setAttribute(SESSION_USER_ID, user.getId());
     return user;
+  }
+
+  private boolean isHashed(String value) {
+    return value != null && value.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$");
+  }
+
+  private boolean matches(String supplied, String stored) {
+    return stored != null && (isHashed(stored) ? encoder.matches(supplied, stored) : stored.equals(supplied));
+  }
+
+  @Transactional
+  public void changePassword(HttpSession session, String oldPassword, String newPassword) {
+    AppUser user = current(session);
+    if (oldPassword == null || !matches(oldPassword, user.getPassword()))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+    validatePassword(newPassword);
+    if (matches(newPassword, user.getPassword()))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a different password");
+    user.setPassword(encoder.encode(newPassword));
+    users.save(user);
+  }
+
+  @Transactional
+  public void resetPassword(HttpSession session, Long userId) {
+    manager(session);
+    AppUser target = users.findById(userId)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    if (target.getRole() == Role.MANAGER)
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot reset manager accounts");
+    target.setPassword(encoder.encode("password"));
+    users.save(target);
+  }
+
+  public java.util.List<java.util.Map<String, Object>> resettableUsers(HttpSession session) {
+    manager(session);
+    return users.findAll().stream().filter(u -> u.getRole() != Role.MANAGER)
+        .map(u -> java.util.Map.<String, Object>of("id", u.getId(), "username", u.getUsername(), "role", u.getRole().name()))
+        .toList();
+  }
+
+  private void validatePassword(String password) {
+    if (password == null || password.length() < 8 || password.length() > 72 || password.isBlank())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be 8–72 characters");
   }
 
   public AppUser current(HttpSession session) {
