@@ -1,8 +1,8 @@
 package com.pokemondraft.leagueportal.config;
 
-import com.pokemondraft.leagueportal.model.*;
-import com.pokemondraft.leagueportal.repository.*;
-import com.pokemondraft.leagueportal.service.ScheduleService;
+import com.pokemondraft.leagueportal.entity.*;
+import com.pokemondraft.leagueportal.repositories.*;
+import com.pokemondraft.leagueportal.services.ScheduleService;
 import java.util.*;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;

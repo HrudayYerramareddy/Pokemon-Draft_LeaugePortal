@@ -1,0 +1,46 @@
+package com.pokemondraft.leagueportal.controllers;
+
+import com.pokemondraft.leagueportal.entity.AppUser;
+import com.pokemondraft.leagueportal.services.AuthService;
+import jakarta.servlet.http.HttpSession;
+import java.util.Map;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+  private final AuthService auth;
+
+  public AuthController(AuthService auth) {
+    this.auth = auth;
+  }
+
+  public record LoginRequest(String username, String password) {}
+
+  @PostMapping("/login")
+  public Map<String, Object> login(@RequestBody LoginRequest req, HttpSession session) {
+    return safe(auth.login(req.username(), req.password(), session));
+  }
+
+  @PostMapping("/logout")
+  public void logout(HttpSession session) {
+    session.invalidate();
+  }
+
+  @GetMapping("/me")
+  public Map<String, Object> me(HttpSession session) {
+    return safe(auth.current(session));
+  }
+
+  private Map<String, Object> safe(AppUser u) {
+    return Map.of(
+        "id",
+        u.getId(),
+        "username",
+        u.getUsername(),
+        "role",
+        u.getRole().name(),
+        "teamId",
+        u.getTeamId() == null ? "" : u.getTeamId());
+  }
+}

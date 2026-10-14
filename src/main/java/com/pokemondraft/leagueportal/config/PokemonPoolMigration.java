@@ -1,7 +1,7 @@
 package com.pokemondraft.leagueportal.config;
 
-import com.pokemondraft.leagueportal.model.Pokemon;
-import com.pokemondraft.leagueportal.repository.PokemonRepository;
+import com.pokemondraft.leagueportal.entity.Pokemon;
+import com.pokemondraft.leagueportal.repositories.PokemonRepository;
 import java.util.List;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
