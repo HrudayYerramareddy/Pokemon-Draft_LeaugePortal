@@ -33,8 +33,8 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, encoder.encode("password"), Role.COACH, saved.get(i - 1).getId()));
       }
-      // Map stable draft slots to the actual season 2 spreadsheet names and divisions.
-      // Keep IDs, roster ownership, and recorded match results unchanged.
+      // Season 2 draft-sheet teams and divisions; no schema changes or roster reset.
+      // The draft position is the stable slot identifying the original 16 teams.
       List<String> coachNames = List.of(
           "Bingus", "Shuckle2306", "Garrett", "wide_right_",
           "Brylo", "TBlocks", "Rover", "Sharks",
@@ -44,28 +44,43 @@ public class DataInitializer {
           "Burn", "Matty/Shuckle", "JackApples", "Wide Right",
           "BryloRen", "TBlocks", "Rover", "ArmTheSharks",
           "Sparky", "coachKief", "MikeO", "Zandy",
-          "DonnyKong", "Zeke", "Matt3024", "CWC");
+          "DonnyKong", "Zeke", "Matt0306", "CWC");
       Set<Integer> kantoSlots = Set.of(1, 2, 4, 7, 8, 14, 15, 16);
       for (Team t : teams.findAll()) {
         int slot = t.getDraftPosition();
         if (slot < 1 || slot > teamNames.size()) continue;
         String desiredName = teamNames.get(slot - 1);
+        String desiredCoach = coachNames.get(slot - 1);
         String desiredDivision = kantoSlots.contains(slot) ? "A" : "B";
-        t.setName(desiredName);
-        t.setCoachName(coachNames.get(slot - 1));
-        t.setDivision(desiredDivision);
+        // Upgrade seeded teams and the prior Season 2 names, but preserve
+        // later commissioner edits to unrelated custom team names.
+        boolean managed = ("Team " + slot).equals(t.getName())
+            || teamNames.contains(t.getName())
+            || "Bacon".equals(t.getName());
+        if (managed) {
+          if (!desiredName.equals(t.getName())) t.setName(desiredName);
+          if (!desiredDivision.equals(t.getDivision())) t.setDivision(desiredDivision);
+        }
+        if (("Coach " + slot).equals(t.getCoachName())
+            || coachNames.contains(t.getCoachName()))
+          t.setCoachName(desiredCoach);
         teams.save(t);
       }
-      // Align existing coach login usernames with the stored coach display names.
-      // Update only the username: retain password hashes, user IDs, and team links.
-      for (AppUser account : users.findAll()) {
-        if (account.getRole() != Role.COACH || account.getTeamId() == null) continue;
-        Team assigned = teams.findById(account.getTeamId()).orElse(null);
-        if (assigned == null || assigned.getCoachName() == null) continue;
-        String desiredUsername = assigned.getCoachName();
-        if (!desiredUsername.equals(account.getUsername())) {
-          account.setUsername(desiredUsername);
-          users.save(account);
+      // Use each team's stored coach name as their login username.
+      // Preserve account IDs, assigned teams and existing password hashes.
+      Map<Long, String> coachesByTeamId = new HashMap<>();
+      for (Team t : teams.findAll()) coachesByTeamId.put(t.getId(), t.getCoachName());
+      for (AppUser user : users.findAll()) {
+        if (user.getRole() != Role.COACH || user.getTeamId() == null) continue;
+        String coachLogin = coachesByTeamId.get(user.getTeamId());
+        if (coachLogin != null && !coachLogin.isBlank()
+            && !coachLogin.equals(user.getUsername())) {
+          users.findByUsername(coachLogin).ifPresent(existing -> {
+            if (!existing.getId().equals(user.getId()))
+              throw new IllegalStateException("Coach username already in use: " + coachLogin);
+          });
+          user.setUsername(coachLogin);
+          users.save(user);
         }
       }
       for (Team t : teams.findAll()) {

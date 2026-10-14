@@ -606,3 +606,30 @@ tbody tr:hover {
     font-size: 28px;
   }
 }
+
+/* Account navigation uses the same styling and selected state as other pages. */
+.sidebar > button[data-page="account"] {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+  border: 1px solid transparent;
+  text-align: left;
+  padding: 11px 13px;
+  border-radius: 13px;
+  background: transparent;
+  color: #a9bfd5;
+  font-weight: 700;
+  transition: 0.18s ease;
+}
+.sidebar > button[data-page="account"]:hover {
+  color: #eaf6ff;
+  background: rgba(73, 145, 220, 0.12);
+  border-color: rgba(120, 190, 255, 0.1);
+  transform: translateX(2px);
+}
+.sidebar > button[data-page="account"].active {
+  color: #eefdff;
+  border-color: rgba(105, 190, 255, 0.28);
+  background: linear-gradient(135deg, rgba(55, 145, 240, 0.3), rgba(25, 85, 170, 0.2));
+  box-shadow: 0 8px 25px rgba(20, 100, 200, 0.14), inset 0 1px 0 rgba(255,255,255,0.09);
+}
