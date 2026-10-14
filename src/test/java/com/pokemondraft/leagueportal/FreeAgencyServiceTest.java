@@ -45,7 +45,7 @@ class FreeAgencyServiceTest {
     when(roster.countByTeamId(1L)).thenReturn(10L);
     when(roster.findByTeamId(1L)).thenReturn(entries);
     when(roster.findByPokemonId(10L)).thenReturn(Optional.of(entries.get(0)));
-    when(pokemon.findById(99L)).thenReturn(Optional.of(new Pokemon("Available", 7)));
+    when(pokemon.findById(99L)).thenReturn(Optional.of(new Pokemon("Available", 4)));
     when(pokemon.findById(98L)).thenReturn(Optional.of(new Pokemon("Expensive", 60)));
     when(bids.save(any(FreeAgentBid.class))).thenAnswer(inv -> inv.getArgument(0));
   }
@@ -81,6 +81,17 @@ class FreeAgencyServiceTest {
     when(roster.countByTeamId(1L)).thenReturn(9L);
     assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
         () -> service.submitBid(1L, 99L, 10L, 1)).getStatusCode());
+  }
+
+  @Test void rejectsPickupMoreExpensiveThanDrop() {
+    when(pokemon.findById(96L)).thenReturn(Optional.of(new Pokemon("Higher price", 6)));
+    assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+        () -> service.submitBid(1L, 96L, 10L, 1)).getStatusCode());
+  }
+
+  @Test void acceptsEqualPricePickup() {
+    when(pokemon.findById(95L)).thenReturn(Optional.of(new Pokemon("Equal price", 5)));
+    assertEquals(1, service.submitBid(1L, 95L, 10L, 1).getAmount());
   }
 
   @Test void processingIsSingleRunEvenWithNoBids() {
