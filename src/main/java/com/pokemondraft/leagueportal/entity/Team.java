@@ -19,7 +19,7 @@ public class Team {
   private int wins;
   private int losses;
   private int differential;
-  private int faBudget = 100;
+  private int faBudget = 3;
   private int draftPosition;
   private int manualRank;
 

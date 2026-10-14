@@ -96,7 +96,11 @@ public class ApiController {
     if (r.coachName() != null) t.setCoachName(r.coachName());
     if (r.division() != null && (r.division().equals("A") || r.division().equals("B")))
       t.setDivision(r.division());
-    if (r.faBudget() != null) t.setFaBudget(r.faBudget());
+    if (r.faBudget() != null) {
+      if (r.faBudget() < 0 || r.faBudget() > 3)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "FAAB must be between $0 and $3");
+      t.setFaBudget(r.faBudget());
+    }
     if (r.draftPosition() != null) t.setDraftPosition(r.draftPosition());
     if (r.manualRank() != null) t.setManualRank(r.manualRank());
     return teams.save(t);
@@ -324,9 +328,9 @@ public class ApiController {
   }
 
   @PostMapping("/manager/free-agency/process")
-  public Map<String, Integer> process(HttpSession session) {
+  public Map<String, Object> process(HttpSession session) {
     auth.manager(session);
-    return Map.of("winners", freeAgency.processBids());
+    return freeAgency.processBids();
   }
 
   @GetMapping("/transactions")
@@ -381,6 +385,8 @@ public class ApiController {
     m.put("scheduleSeed", s.getScheduleSeed());
     m.put("lineupDeadline", s.getLineupDeadline());
     m.put("playoffSeedModeEnabled", s.isPlayoffSeedModeEnabled());
+    m.put("waiverProcessed", s.isWaiverProcessed());
+    m.put("waiverWindowOpen", freeAgency.isWaiverWindowOpen());
     return m;
   }
 

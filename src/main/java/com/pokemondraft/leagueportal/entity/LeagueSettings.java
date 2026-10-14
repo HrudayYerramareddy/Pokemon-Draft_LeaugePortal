@@ -13,6 +13,7 @@ public class LeagueSettings {
   private boolean snakeDraft = true;
   private long scheduleSeed = 2026L;
   private LocalDateTime lineupDeadline;
+  private boolean waiverProcessed;
 
   public LeagueSettings() {}
 
@@ -76,6 +77,9 @@ public class LeagueSettings {
     lineupDeadline = v;
   }
 
+
+  public boolean isWaiverProcessed() { return waiverProcessed; }
+  public void setWaiverProcessed(boolean v) { waiverProcessed = v; }
 
   @Transient
   public boolean isPlayoffSeedModeEnabled() {

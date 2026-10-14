@@ -31,6 +31,12 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, "password", Role.COACH, saved.get(i - 1).getId()));
       }
+      for (Team t : teams.findAll()) {
+        if (t.getFaBudget() == 100) {
+          t.setFaBudget(3);
+          teams.save(t);
+        }
+      }
       Map<String, Integer> basePrices = BasePrices.values();
       if (pokemon.count() == 0) {
         for (String name : championsPool()) pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));

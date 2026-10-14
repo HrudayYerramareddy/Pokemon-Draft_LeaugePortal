@@ -40,7 +40,7 @@
     if (state.user.role === "MANAGER") {
       const pending = list.filter((b) => b.status === "PENDING").length;
       $("#fa-content").innerHTML =
-        `<div class="card"><div class="section-title"><div><h2>Blind FAAB Processing</h2><p class="muted">${pending} pending bid${pending === 1 ? "" : "s"}. Processing awards each free agent to the highest valid bid; earlier bid wins a tie.</p></div><button id="process-bids" class="primary" ${pending ? "" : "disabled"}>Process Pending Bids</button></div></div>${bidTable(list)}`;
+        `<div class="card"><div class="section-title"><div><h2>Blind FAAB Processing</h2><p class="muted">${pending} pending bid${pending === 1 ? "" : "s"}. Processing awards each free agent to the highest valid bid; worse record wins ties; identical records use a random draw.</p></div><button id="process-bids" class="primary" ${pending && state.settings?.waiverWindowOpen ? "" : "disabled"}>Process Pending Bids</button></div></div>${bidTable(list)}`;
       const button = $("#process-bids");
       if (button)
         button.addEventListener("click", async () => {
@@ -58,6 +58,7 @@
             toast(
               `FAAB processed: ${r.winners} winning bid${r.winners === 1 ? "" : "s"}`,
             );
+            if (r.wheels?.length) alert("Wheel tiebreak results:\\n" + r.wheels.map(w => w.pokemon + ": " + w.teams.join(" / ") + " → " + w.winner).join("\\n"));
             await renderBids();
           } catch (e) {
             toast(e.message, true);
@@ -70,17 +71,21 @@
     const myRoster = await api(`/api/rosters/${state.user.teamId}`);
     const me = state.teams.find((t) => t.id === state.user.teamId);
     const complete = myRoster.length === 10;
-    const budget = me?.faBudget ?? 0;
+    const pendingBids = list.filter(b => b.status === "PENDING");
+    const reserved = pendingBids.reduce((sum, b) => sum + b.amount, 0);
+    const budget = Math.max(0, Math.min(3, me?.faBudget ?? 0) - reserved);
+    const open = !!state.settings?.waiverWindowOpen;
     $("#fa-content").innerHTML =
       `<div class="card"><h2>Submit Blind FAAB Bid</h2>
-      <p>FAAB remaining: <strong>$${budget}</strong> · Roster: <strong>${myRoster.length}/10</strong></p>
-      <p class="muted">Every team must keep exactly 10 Pokémon. Choose the free agent you want, your bid amount, and the Pokémon that will be dropped only if you win.</p>
+      <p>FAAB available to bid: <strong>${budget}/$3</strong> · Roster: <strong>${myRoster.length}/10</strong></p>
+      <p class="muted">One waiver run after Week 3, before Week 4. Each bid is $1–$3; combined bids cannot exceed $3. Every team must keep exactly 10 Pokémon. Choose the free agent you want, your bid amount, and the Pokémon that will be dropped only if you win.</p>
       <div class="toolbar">
         <label>Free agent<select id="bid-wanted"><option value="">Choose free agent</option>${free.map((p) => `<option value="${p.id}">${esc(p.name)} — $${p.price}</option>`).join("")}</select></label>
         <label>Drop if bid wins<select id="bid-drop"><option value="">Choose Pokemon to drop</option>${myRoster.map((p) => `<option value="${p.pokemonId}">${esc(p.name)} — $${p.price}</option>`).join("")}</select></label>
         <label>FAAB bid<input id="bid-amount" type="number" min="1" max="${budget}" value="${budget > 0 ? 1 : 0}" placeholder="1"></label>
-        <button id="submit-bid" class="primary" ${budget <= 0 || free.length === 0 || !complete ? "disabled" : ""}>Submit Blind Bid</button>
+        <button id="submit-bid" class="primary" ${!open || pendingBids.length >= 3 || budget <= 0 || free.length === 0 || !complete ? "disabled" : ""}>Submit Blind Bid</button>
       </div>
+      ${!open ? '<p class="small muted">Waivers are closed until after Week 3, or have already finished.</p>' : ""}
       ${!complete ? '<p class="small muted">Free agency is unavailable until this team has exactly 10 Pokémon.</p>' : ""}<p id="bid-preview" class="small muted"></p></div>${bidTable(list)}`;
 
     const preview = () => {

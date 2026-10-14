@@ -17,6 +17,8 @@ public class FreeAgencyService {
   private final RosterEntryRepository roster;
   private final TransactionRecordRepository transactions;
   private final TradeOfferRepository trades;
+  private final MatchupRepository matchups;
+  private final LeagueSettingsRepository settings;
 
   public FreeAgencyService(
       FreeAgentBidRepository bids,
@@ -24,20 +26,45 @@ public class FreeAgencyService {
       PokemonRepository pokemon,
       RosterEntryRepository roster,
       TransactionRecordRepository transactions,
-      TradeOfferRepository trades) {
+      TradeOfferRepository trades, MatchupRepository matchups, LeagueSettingsRepository settings) {
     this.bids = bids;
     this.teams = teams;
     this.pokemon = pokemon;
     this.roster = roster;
     this.transactions = transactions;
     this.trades = trades;
+    this.matchups = matchups;
+    this.settings = settings;
   }
 
+  public boolean isWaiverWindowOpen() {
+    LeagueSettings s = settings.findById(1L).orElseGet(LeagueSettings::new);
+    if (s.isWaiverProcessed() || s.getCurrentWeek() < 3 || s.getCurrentWeek() > 4) return false;
+    List<Matchup> third = matchups.findByWeekOrderByIdAsc(3);
+    List<Matchup> fourth = matchups.findByWeekOrderByIdAsc(4);
+    return !third.isEmpty() && third.stream().allMatch(Matchup::isPlayed)
+        && !fourth.isEmpty() && fourth.stream().noneMatch(Matchup::isPlayed);
+  }
+
+  private void requireWindow() {
+    if (!isWaiverWindowOpen()) throw bad("Waivers only open after Week 3 and before Week 4, once per season");
+  }
+
+  @Transactional
   public FreeAgentBid submitBid(Long teamId, Long wanted, Long drop, int amount) {
+    requireWindow();
     Team t = teams.findById(teamId).orElseThrow();
     if (t.getFaBudget() <= 0) throw bad("You have no FAAB remaining");
-    if (amount <= 0 || amount > t.getFaBudget())
+    if (amount <= 0 || amount > 3 || amount > t.getFaBudget())
       throw bad("Bid must be between $1 and your remaining FAAB");
+    List<FreeAgentBid> pending = bids.findByStatus(BidStatus.PENDING).stream()
+        .filter(b -> b.getTeamId().equals(teamId)).toList();
+    if (pending.size() >= 3 || pending.stream().mapToInt(FreeAgentBid::getAmount).sum() + amount > Math.min(3, t.getFaBudget()))
+      throw bad("Combined pending bids cannot exceed $3");
+    if (pending.stream().anyMatch(b -> Objects.equals(b.getWantedPokemonId(), wanted)))
+      throw bad("Already bidding on this Pokemon");
+    if (pending.stream().anyMatch(b -> Objects.equals(b.getDropPokemonId(), drop)))
+      throw bad("Choose a different drop for each bid");
     if (wanted == null) throw bad("Choose a free agent");
     Pokemon w = pokemon.findById(wanted).orElseThrow(() -> bad("Free agent does not exist"));
     if (roster.findByPokemonId(wanted).isPresent() || w.isDrafted())
@@ -55,31 +82,59 @@ public class FreeAgencyService {
   }
 
   @Transactional
-  public int processBids() {
+  public Map<String, Object> processBids() {
+    requireWindow();
     List<FreeAgentBid> pending = bids.findByStatus(BidStatus.PENDING);
     Map<Long, List<FreeAgentBid>> groups = new LinkedHashMap<>();
-    for (FreeAgentBid b : pending)
-      groups.computeIfAbsent(b.getWantedPokemonId(), k -> new ArrayList<>()).add(b);
+    for (FreeAgentBid bid : pending)
+      groups.computeIfAbsent(bid.getWantedPokemonId(), k -> new ArrayList<>()).add(bid);
+    List<List<FreeAgentBid>> ordered = new ArrayList<>(groups.values());
+    ordered.sort(Comparator.comparingInt((List<FreeAgentBid> group) ->
+        group.stream().mapToInt(FreeAgentBid::getAmount).max().orElse(0)).reversed());
+    List<Map<String, Object>> wheels = new ArrayList<>();
     int winners = 0;
-    for (List<FreeAgentBid> g : groups.values()) {
-      g.sort(
-          Comparator.comparingInt(FreeAgentBid::getAmount)
-              .reversed()
-              .thenComparing(FreeAgentBid::getCreatedAt));
+    for (List<FreeAgentBid> group : ordered) {
+      List<FreeAgentBid> candidates = new ArrayList<>(group);
       FreeAgentBid winner = null;
-      for (FreeAgentBid b : g)
-        if (canApplyBid(b)) {
-          winner = b;
-          break;
+      while (!candidates.isEmpty()) {
+        int top = candidates.stream().mapToInt(FreeAgentBid::getAmount).max().orElse(0);
+        List<FreeAgentBid> valid = candidates.stream()
+            .filter(bid -> bid.getAmount() == top && canApplyBid(bid)).toList();
+        if (valid.isEmpty()) {
+          candidates.removeIf(bid -> bid.getAmount() == top);
+          continue;
         }
-      for (FreeAgentBid b : g) b.setStatus(b == winner ? BidStatus.WON : BidStatus.LOST);
+        int fewestWins = valid.stream().mapToInt(bid ->
+            teams.findById(bid.getTeamId()).orElseThrow().getWins()).min().orElse(0);
+        List<FreeAgentBid> worse = valid.stream().filter(bid ->
+            teams.findById(bid.getTeamId()).orElseThrow().getWins() == fewestWins).toList();
+        int mostLosses = worse.stream().mapToInt(bid ->
+            teams.findById(bid.getTeamId()).orElseThrow().getLosses()).max().orElse(0);
+        List<FreeAgentBid> tied = worse.stream().filter(bid ->
+            teams.findById(bid.getTeamId()).orElseThrow().getLosses() == mostLosses).toList();
+        winner = tied.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(tied.size()));
+        if (tied.size() > 1) {
+          String name = pokemon.findById(winner.getWantedPokemonId()).orElseThrow().getName();
+          List<String> names = tied.stream().map(bid ->
+              teams.findById(bid.getTeamId()).orElseThrow().getName()).toList();
+          String winningName = teams.findById(winner.getTeamId()).orElseThrow().getName();
+          wheels.add(Map.of("pokemon", name, "teams", names, "winner", winningName));
+          transactions.save(new TransactionRecord("WAIVER_TIEBREAK",
+              "Wheel draw for " + name + ": " + String.join(", ", names) + ". Winner: " + winningName));
+        }
+        break;
+      }
+      for (FreeAgentBid bid : group) bid.setStatus(bid == winner ? BidStatus.WON : BidStatus.LOST);
       if (winner != null) {
         applyWinningBid(winner);
         winners++;
       }
-      bids.saveAll(g);
+      bids.saveAll(group);
     }
-    return winners;
+    LeagueSettings settingsRow = settings.findById(1L).orElseThrow();
+    settingsRow.setWaiverProcessed(true);
+    settings.save(settingsRow);
+    return Map.of("winners", winners, "wheels", wheels);
   }
 
   private boolean canApplyBid(FreeAgentBid b) {
@@ -88,6 +143,7 @@ public class FreeAgencyService {
     if (t == null
         || w == null
         || b.getAmount() <= 0
+        || b.getAmount() > 3
         || b.getAmount() > t.getFaBudget()
         || roster.findByPokemonId(b.getWantedPokemonId()).isPresent()
         || w.isDrafted()) return false;
