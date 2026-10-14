@@ -13,8 +13,10 @@ public class LeagueSettings {
   private boolean snakeDraft = true;
   private long scheduleSeed = 2026L;
   private LocalDateTime lineupDeadline;
-  private boolean waiverProcessed;
-  private boolean season2PricesApplied;
+  // Nullable for safe schema upgrades of existing PostgreSQL league_settings rows.
+  // Null represents false until the one-time migration completes.
+  private Boolean waiverProcessed = false;
+  private Boolean season2PricesApplied = false;
 
   public LeagueSettings() {}
 
@@ -79,10 +81,10 @@ public class LeagueSettings {
   }
 
 
-  public boolean isSeason2PricesApplied() { return season2PricesApplied; }
+  public boolean isSeason2PricesApplied() { return Boolean.TRUE.equals(season2PricesApplied); }
   public void setSeason2PricesApplied(boolean value) { season2PricesApplied = value; }
 
-  public boolean isWaiverProcessed() { return waiverProcessed; }
+  public boolean isWaiverProcessed() { return Boolean.TRUE.equals(waiverProcessed); }
   public void setWaiverProcessed(boolean v) { waiverProcessed = v; }
 
   @Transient
