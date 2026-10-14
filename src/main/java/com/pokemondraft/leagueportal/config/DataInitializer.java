@@ -33,20 +33,38 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, encoder.encode("password"), Role.COACH, saved.get(i - 1).getId()));
       }
-      // Upgrade placeholder coach names without adding a database column.
-      // Do not overwrite coach names already customized by the commissioner.
+      // Season 2 draft-sheet teams and divisions; no schema changes or roster reset.
+      // The draft position is the stable slot identifying the original 16 teams.
       List<String> coachNames = List.of(
           "Bingus", "Shuckle2306", "Garrett", "wide_right_",
           "Brylo", "TBlocks", "Rover", "Sharks",
           "Sparky", "Kief", "MikeO", "Zandy",
           "Pudding", "Zeke", "TheMartian", "CWC");
+      List<String> teamNames = List.of(
+          "Burn", "Matty/Shuckle", "JackApples", "Wide Right",
+          "BryloRen", "TBlocks", "Rover", "ArmTheSharks",
+          "Sparky", "coachKief", "MikeO", "Zandy",
+          "DonnyKong", "Zeke", "Matt0306", "CWC");
+      Set<Integer> kantoSlots = Set.of(1, 2, 4, 6, 7, 14, 15, 16);
       for (Team t : teams.findAll()) {
         int slot = t.getDraftPosition();
-        if (slot >= 1 && slot <= coachNames.size()
-            && ("Coach " + slot).equals(t.getCoachName())) {
-          t.setCoachName(coachNames.get(slot - 1));
-          teams.save(t);
+        if (slot < 1 || slot > teamNames.size()) continue;
+        String desiredName = teamNames.get(slot - 1);
+        String desiredCoach = coachNames.get(slot - 1);
+        String desiredDivision = kantoSlots.contains(slot) ? "A" : "B";
+        // Upgrade seeded teams and the prior Season 2 names, but preserve
+        // later commissioner edits to unrelated custom team names.
+        boolean managed = ("Team " + slot).equals(t.getName())
+            || teamNames.contains(t.getName())
+            || "Bacon".equals(t.getName());
+        if (managed) {
+          if (!desiredName.equals(t.getName())) t.setName(desiredName);
+          if (!desiredDivision.equals(t.getDivision())) t.setDivision(desiredDivision);
         }
+        if (("Coach " + slot).equals(t.getCoachName())
+            || coachNames.contains(t.getCoachName()))
+          t.setCoachName(desiredCoach);
+        teams.save(t);
       }
       for (Team t : teams.findAll()) {
         if (t.getFaBudget() == 100) {
