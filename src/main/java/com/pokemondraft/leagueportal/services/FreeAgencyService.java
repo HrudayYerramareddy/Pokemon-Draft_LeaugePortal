@@ -73,10 +73,11 @@ public class FreeAgencyService {
     if (count != ROSTER_LIMIT) throw bad("Free agency requires a complete 10-Pokemon roster");
     if (drop == null)
       throw bad("Choose one Pokemon to drop. Rosters must stay at exactly 10 Pokemon");
-    int value = rosterValue(teamId) + w.getPrice();
     RosterEntry d = verifyOwner(teamId, drop);
     Pokemon dp = pokemon.findById(d.getPokemonId()).orElseThrow();
-    value -= dp.getPrice();
+    if (w.getPrice() > dp.getPrice())
+      throw bad("Free agent must cost no more than the Pokemon being dropped");
+    int value = rosterValue(teamId) - dp.getPrice() + w.getPrice();
     if (value > ROSTER_BUDGET) throw bad("Move would put roster value at $" + value + "/$100");
     return bids.save(new FreeAgentBid(teamId, wanted, drop, amount));
   }
@@ -152,7 +153,8 @@ public class FreeAgencyService {
     Optional<RosterEntry> d = roster.findByPokemonId(b.getDropPokemonId());
     if (d.isEmpty() || !d.get().getTeamId().equals(b.getTeamId())) return false;
     Pokemon dp = pokemon.findById(b.getDropPokemonId()).orElse(null);
-    return dp != null && rosterValue(b.getTeamId()) - dp.getPrice() + w.getPrice() <= ROSTER_BUDGET;
+    return dp != null && w.getPrice() <= dp.getPrice()
+        && rosterValue(b.getTeamId()) - dp.getPrice() + w.getPrice() <= ROSTER_BUDGET;
   }
 
   private void applyWinningBid(FreeAgentBid b) {
@@ -161,6 +163,7 @@ public class FreeAgencyService {
     Pokemon dp = pokemon.findById(b.getDropPokemonId()).orElseThrow();
     RosterEntry de = verifyOwner(t.getId(), dp.getId());
     int value = rosterValue(t.getId()) - dp.getPrice() + w.getPrice();
+    if (w.getPrice() > dp.getPrice()) throw bad("Pickup cannot cost more than drop");
     if (value > ROSTER_BUDGET) throw bad("Winning bid exceeds $100 roster budget");
     roster.delete(de);
     dp.setDrafted(false);
