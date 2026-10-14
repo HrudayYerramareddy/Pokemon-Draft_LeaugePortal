@@ -2,38 +2,45 @@ package com.pokemondraft.leagueportal.config;
 
 import java.util.*;
 
-final class BasePrices {
+/** Season 2 pricing, transcribed from the commissioner's Draft Price Chart CSV.
+ * Ability/move modifiers are not Pokemon and are deliberately excluded.
+ * Regional and alternate-form labels are normalized to existing portal names.
+ */
+public final class BasePrices {
   private BasePrices() {}
 
-  static Map<String,Integer> values() {
-    Map<String,Integer> out = new LinkedHashMap<>();
+  public static Map<String, Integer> values() {
+    Map<String, Integer> out = new LinkedHashMap<>();
     String data = """
-20:Rillaboom|Sneasler|Incineroar|Salamence|Indeedee (Female)|Kingambit|Basculegion (Male)|Garchomp|Golisopod|Gholdengo|Archaludon|Pelipper|Milotic
-19:Raichu|Farigiraf|Charizard|Gardevoir|Sylveon|Arcanine (Hisuian)|Tyranitar|Whimsicott|Armarouge|Staraptor|Metagross|Indeedee (Male)
-18:Sinistcha|Volcarona|Torkoal|Excadrill|Floette (Eternal Flower)|Politoed|Grimmsnarl|Lucario|Swampert|Froslass|Gengar|Baxcalibur|Dragonite
-17:Ninetales (Alolan)|Aerodactyl|Venusaur|Sableye|Primarina|Glimmora|Corviknight|Pawmot|Blastoise|Delphox|Annihilape|Hatterene
-16:Absol|Maushold|Dragapult|Talonflame|Ceruledge|Kommo-o|Camerupt|Hydreigon|Blaziken|Typhlosion (Hisuian)|Mawile|Sirfetch'd|Vivillon
-15:Gallade|Inteleon|Zoroark (Hisuian)|Meowscarada|Tsareena|Rotom Wash|Alakazam|Kleavor|Empoleon|Espathra|Weavile|Chandelure
-14:Scovillain|Mimikyu|Malamar|Aegislash|Pincurchin|Scizor|Grapploct|Clefable|Toxapex|Toxtricity (Amped)|Cinderace|Kangaskhan|Meganium
-13:Goodra (Hisuian)|Basculegion (Female)|Greninja|Oranguru|Gyarados|Mamoswine|Samurott (Hisuian)|Overqwil|Snorlax|Scrafty|Altaria|Rotom Heat
-12:Bellibolt|Araquanid|Toxtricity (Low Key)|Pyroar|Lopunny|Drampa|Lycanroc (Dusk)|Sceptile|Tinkaton|Klefki|Meowstic (Female)|Vanilluxe|Ninetales
-11:Meowstic (Male)|Starmie|Slowking (Galarian)|Jolteon|Arcanine|Clawitzer|Aggron|Umbreon|Skarmory|Skeledirge|Gliscor|Spiritomb
-10:Hawlucha|Azumarill|Audino|Ampharos|Eelektross|Steelix|Slowbro|Abomasnow|Crabominable|Raichu (Alolan)|Ditto|Heliolisk|Slowbro (Galarian)
-9:Houndoom|Serperior|Houndstone|Alcremie|Noivern|Golurk|Palafin|Dragalge|Krookodile|Infernape|Chesnaught|Feraligatr
-8:Cofagrigus|Hippowdon|Conkeldurr|Manectric|Wyrdeer|Espeon|Perrserker|Salazzle|Arboliva|Glaceon|Mudsdale|Vileplume
-7:Decidueye (Hisuian)|Wigglytuff|Reuniclus|Mr. Mime|Persian (Alolan)|Vaporeon|Rhyperior|Torterra|Heracross|Medicham|Aurorus|Typhlosion
-6:Scolipede|Machamp|Runerigus|Mr. Rime|Tauros (Paldean Blaze)|Pikachu|Glalie|Beedrill|Pidgeot|Aromatisse|Banette|Quaquaval|Tauros (Paldean Aqua)
-5:Liepard|Hydrapple|Slowking|Morpeko|Toxicroak|Orthworm|Garganacl|Squawkabilly|Sharpedo|Zoroark|Tyrantrum
-4:Rampardos|Gogoat|Mabosstiff|Slurpuff|Thievul|Pangoro|Lycanroc (Midday)|Emboar|Victreebel|Florges|Chimecho|Goodra|Trevenant|Farfetch'd
-3:Leafeon|Beartic|Rotom Frost|Musharna|Avalugg (Hisuian)|Toucannon|Swalot|Luxray|Rotom Mow|Falinks|Bastiodon
-2:Diggersby|Roserade|Gourgeist|Pinsir|Polteageist|Emolga|Flareon|Arbok|Barbaracle|Dedenne|Decidueye|Flapple|Passimian
-1:Castform|Persian|Sandaconda|Stunfisk|Forretress|Ariados|Appletun|Qwilfish|Lycanroc (Midnight)|Furfrou|Rotom Fan|Avalugg
-0:Garbodor|Simipour|Tauros|Stunfisk (Galarian)|Rotom|Simisage|Simisear|Watchog|Tauros (Paldean Combat)|Samurott
+20:Indeedee (Female)|Indeedee (Male)|Whimsicott|Pelipper|Rillaboom|Sneasler|Incineroar|Salamence|Golisopod|Raichu|Farigiraf|Volcarona|Grimmsnarl|Kingambit|Milotic|Gardevoir|Armarouge|Staraptor|Sinistcha|Talonflame|Vivillon
+19:Basculegion (Male)|Gholdengo|Sylveon|Gengar|Sableye|Corviknight|Pawmot|Blastoise|Hatterene
+18:Garchomp|Archaludon|Charizard|Arcanine (Hisuian)|Tyranitar|Metagross|Floette (Eternal Flower)|Lucario|Swampert|Dragonite|Aerodactyl|Kleavor
+17:Torkoal|Politoed|Froslass|Primarina|Glimmora|Delphox|Annihilape|Maushold|Hydreigon|Gallade|Meowstic (Female)
+16:Meowstic (Male)|Excadrill|Ninetales (Alolan)|Absol|Dragapult|Mawile|Meowscarada|Espathra|Malamar|Scizor
+15:Baxcalibur|Venusaur|Ceruledge|Camerupt|Blaziken|Tsareena|Empoleon|Weavile|Chandelure|Clefable
+14:Sirfetch'd|Rotom Wash|Alakazam|Scovillain|Mimikyu|Toxtricity (Amped)|Scrafty|Altaria|Klefki
+13:Kommo-o|Typhlosion (Hisuian)|Inteleon|Zoroark (Hisuian)|Aegislash|Pincurchin|Toxapex|Cinderace|Kangaskhan|Meganium|Basculegion (Female)|Samurott (Hisuian)|Lopunny|Starmie
+12:Grapploct|Greninja|Oranguru|Gyarados|Overqwil|Rotom Heat|Araquanid|Toxtricity (Low Key)|Lycanroc (Dusk)|Sceptile|Ninetales|Slowking (Galarian)|Medicham
+11:Goodra (Hisuian)|Mamoswine|Snorlax|Bellibolt|Pyroar|Tinkaton|Vanilluxe|Arcanine|Clawitzer|Skarmory|Gliscor|Infernape|Mr. Mime
+10:Drampa|Jolteon|Spiritomb|Hawlucha|Audino|Eelektross|Steelix|Slowbro|Crabominable|Raichu (Alolan)|Slowbro (Galarian)|Espeon|Perrserker|Rotom Frost|Rotom Mow|Rotom Fan
+9:Aggron|Umbreon|Azumarill|Ampharos|Abomasnow|Heliolisk|Noivern|Palafin|Dragalge|Feraligatr|Wyrdeer|Liepard
+8:Skeledirge|Serperior|Alcremie|Golurk|Krookodile|Conkeldurr|Manectric|Cofagrigus|Decidueye (Hisuian)|Persian (Alolan)|Mr. Rime|Banette
+7:Ditto|Houndoom|Houndstone|Chesnaught|Hippowdon|Salazzle|Arboliva|Wigglytuff|Reuniclus|Pidgeot|Toxicroak|Squawkabilly
+6:Glaceon|Mudsdale|Vileplume|Vaporeon|Aurorus|Scolipede|Runerigus|Pikachu|Beedrill|Aromatisse|Slowking
+5:Rhyperior|Torterra|Heracross|Typhlosion|Machamp|Tauros (Paldean Blaze)|Glalie|Quaquaval|Tauros (Paldean Aqua)|Morpeko|Garganacl|Sharpedo|Pangoro|Chimecho|Toucannon
+4:Orthworm|Tyrantrum|Trevenant|Farfetch'd
+3:Hydrapple|Zoroark|Gogoat|Mabosstiff|Rampardos|Thievul|Emboar|Leafeon|Avalugg (Hisuian)|Luxray|Diggersby|Polteageist|Passimian|Tauros (Paldean Combat)
+2:Lycanroc (Midday)|Victreebel|Florges|Goodra|Musharna|Falinks|Bastiodon|Decidueye|Flapple|Persian
+1:Beartic|Gourgeist|Pinsir|Emolga|Flareon|Arbok|Barbaracle|Castform|Ariados|Qwilfish
+0:Slurpuff|Swalot|Roserade|Dedenne|Sandaconda|Stunfisk|Forretress|Appletun|Lycanroc (Midnight)|Furfrou|Avalugg|Garbodor|Simipour|Tauros|Stunfisk (Galarian)|Rotom|Simisage|Simisear|Watchog|Samurott
 """;
     for (String line : data.strip().split("\n")) {
       String[] pair = line.split(":", 2);
       int price = Integer.parseInt(pair[0]);
-      for (String name : pair[1].split("\\|")) out.putIfAbsent(name, price);
+      for (String name : pair[1].split("\\|")) {
+        if (out.putIfAbsent(name, price) != null)
+          throw new IllegalStateException("Duplicate price: " + name);
+      }
     }
     return Collections.unmodifiableMap(out);
   }

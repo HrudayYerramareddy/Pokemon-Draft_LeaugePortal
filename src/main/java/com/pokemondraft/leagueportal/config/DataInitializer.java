@@ -50,6 +50,20 @@ public class DataInitializer {
           if (pokemon.findByName(name).isEmpty())
             pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
       }
+      // One-time Season 2 CSV price migration. Update prices in place, preserving
+      // Pokemon IDs, roster ownership, draft picks, and all league history.
+      LeagueSettings league = settings.findById(1L).orElseThrow();
+      if (!league.isSeason2PricesApplied()) {
+        for (Pokemon p : pokemon.findAll()) {
+          Integer chartPrice = basePrices.get(p.getName());
+          if (chartPrice != null && p.getPrice() != chartPrice) {
+            p.setPrice(chartPrice);
+            pokemon.save(p);
+          }
+        }
+        league.setSeason2PricesApplied(true);
+        settings.save(league);
+      }
       // RosterEntry is the source of truth for current ownership. Repair only
       // the derived Pokemon.drafted flag; never rebuild or remove roster rows.
       Set<Long> rosteredPokemonIds = new HashSet<>();

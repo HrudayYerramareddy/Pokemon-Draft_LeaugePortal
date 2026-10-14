@@ -14,6 +14,7 @@ public class LeagueSettings {
   private long scheduleSeed = 2026L;
   private LocalDateTime lineupDeadline;
   private boolean waiverProcessed;
+  private boolean season2PricesApplied;
 
   public LeagueSettings() {}
 
@@ -77,6 +78,9 @@ public class LeagueSettings {
     lineupDeadline = v;
   }
 
+
+  public boolean isSeason2PricesApplied() { return season2PricesApplied; }
+  public void setSeason2PricesApplied(boolean value) { season2PricesApplied = value; }
 
   public boolean isWaiverProcessed() { return waiverProcessed; }
   public void setWaiverProcessed(boolean v) { waiverProcessed = v; }
