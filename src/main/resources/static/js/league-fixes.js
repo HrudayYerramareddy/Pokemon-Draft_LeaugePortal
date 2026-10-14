@@ -10,8 +10,12 @@ renderLineup = async function () {
       '<h1>Weekly Lineup</h1><div class="card"><p>Coach lineups appear on Schedule as soon as both teams submit.</p></div>';
     return;
   }
-  const d = await api("/api/flow/lineup"),
-    selected = new Set(d.selectedPokemonIds || []);
+  const d = await api("/api/flow/lineup");
+  if (!d.lineupRequired) {
+    $("#page-lineup").innerHTML = `<h1>Weekly Lineup</h1><div class="card"><h2>Week ${d.week}: ${esc(d.weekLabel)}</h2><p class="muted">No match or lineup submission is scheduled this week. Submissions will reopen in the next playing week.</p></div>`;
+    return;
+  }
+  const selected = new Set(d.selectedPokemonIds || []);
   $("#page-lineup").innerHTML =
     `<div class="section-title"><div><h1>Weekly Lineup</h1><p class="muted">Week ${d.week} · choose exactly 6 of your 10 Pokémon.</p></div><span id="lineup-count" class="pool-count">${selected.size}/6 selected</span></div><div class="card"><p class="muted">${d.locked ? "Both teams submitted. Your lineup is locked." : `Deadline: ${d.deadline ? new Date(d.deadline).toLocaleString() : "No deadline set"}`}</p><div id="lineup-grid" class="pokemon-card-grid lineup-draft-grid">${d.roster.map((p) => simplePokemonCard(p, selected.has(p.pokemonId))).join("")}</div><div class="selection-footer"><span id="lineup-message">${d.locked ? "Lineup locked and revealed on Schedule." : "Select six Pokémon."}</span><button id="submit-lineup" class="primary" ${d.locked ? "disabled" : ""}>Submit Team of 6</button></div></div>`;
   const grid = $("#lineup-grid");
@@ -161,13 +165,14 @@ renderBids = async function () {
     free = await api("/api/pokemon/free-agents");
   if (state.user.role === "MANAGER") {
     $("#fa-content").innerHTML =
-      `<div class="card"><div class="section-title"><div><h2>Blind FAAB Processing</h2><p class="muted">Highest valid bid wins. Invalid bids are skipped.</p></div><button id="process-bids" class="primary">Process Pending Bids</button></div></div><div class="card"><h2>All Bids</h2>${bidTable(list)}</div>`;
+      `<div class="card"><div class="section-title"><div><h2>Week 4 Waiver Processing</h2><p class="muted">Two periods (Nov 25–27 and Nov 28–30). Each coach has $3 FAAB total across both periods. Processing is commissioner-controlled.</p><p class="muted">Completed: ${state.settings.waiverPeriodsProcessed ?? 0} / 2 periods.</p></div><button id="process-bids" class="primary" ${state.settings.waiverWindowOpen ? "" : "disabled"}>Process Period ${Math.min((state.settings.waiverPeriodsProcessed ?? 0) + 1, 2)}</button></div></div><div class="card"><h2>All Bids</h2>${bidTable(list)}</div>`;
     $("#process-bids").onclick = async () => {
       try {
         const r = await api("/api/manager/free-agency/process", {
           method: "POST",
         });
-        toast(`Processed bids: ${r.winners} winners`);
+        toast(`Waiver period ${r.period} processed: ${r.winners} winners`);
+        await refreshBase();
         await renderBids();
       } catch (e) {
         toast(e.message, true);

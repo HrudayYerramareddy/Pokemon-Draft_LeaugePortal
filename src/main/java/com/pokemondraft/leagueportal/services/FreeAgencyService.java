@@ -37,17 +37,23 @@ public class FreeAgencyService {
     this.settings = settings;
   }
 
+  /** Two Week 4 waiver periods; each team retains its original $3 total budget. */
+  public int waiverPeriodsProcessed() {
+    return (int) transactions.findAllByOrderByCreatedAtDesc().stream()
+        .filter(t -> "WAIVER_PERIOD_PROCESSED".equals(t.getType())).count();
+  }
+
   public boolean isWaiverWindowOpen() {
     LeagueSettings s = settings.findById(1L).orElseGet(LeagueSettings::new);
-    if (s.isWaiverProcessed() || s.getCurrentWeek() < 3 || s.getCurrentWeek() > 4) return false;
+    if (s.isWaiverProcessed() || s.getCurrentWeek() != 4 || waiverPeriodsProcessed() >= 2)
+      return false;
     List<Matchup> third = matchups.findByWeekOrderByIdAsc(3);
-    List<Matchup> fourth = matchups.findByWeekOrderByIdAsc(4);
-    return !third.isEmpty() && third.stream().allMatch(Matchup::isPlayed)
-        && !fourth.isEmpty() && fourth.stream().noneMatch(Matchup::isPlayed);
+    return third.size() == 8 && third.stream().allMatch(Matchup::isPlayed);
   }
 
   private void requireWindow() {
-    if (!isWaiverWindowOpen()) throw bad("Waivers only open after Week 3 and before Week 4, once per season");
+    if (!isWaiverWindowOpen())
+      throw bad("Waivers run during Week 4 after all Week 3 results, in two processing periods");
   }
 
   @Transactional
@@ -132,10 +138,13 @@ public class FreeAgencyService {
       }
       bids.saveAll(group);
     }
+    int period = waiverPeriodsProcessed() + 1;
+    transactions.save(new TransactionRecord("WAIVER_PERIOD_PROCESSED",
+        "Week 4 waiver period " + period + " processed. Winners: " + winners));
     LeagueSettings settingsRow = settings.findById(1L).orElseThrow();
-    settingsRow.setWaiverProcessed(true);
+    settingsRow.setWaiverProcessed(period >= 2);
     settings.save(settingsRow);
-    return Map.of("winners", winners, "wheels", wheels);
+    return Map.of("winners", winners, "wheels", wheels, "period", period);
   }
 
   private boolean canApplyBid(FreeAgentBid b) {

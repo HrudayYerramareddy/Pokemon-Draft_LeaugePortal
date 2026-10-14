@@ -3,6 +3,7 @@ package com.pokemondraft.leagueportal.config;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.ScheduleService;
+import com.pokemondraft.leagueportal.services.SeasonCalendar;
 import java.util.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.boot.CommandLineRunner;
@@ -44,7 +45,7 @@ public class DataInitializer {
           "Burn", "Matty/Shuckle", "JackApples", "Wide Right",
           "BryloRen", "TBlocks", "Rover", "ArmTheSharks",
           "Sparky", "coachKief", "MikeO", "Zandy",
-          "DonnyKong", "Zeke", "Matt0306", "CWC");
+          "DonnyKong", "Zeke", "Matt3024", "CWC");
       Set<Integer> kantoSlots = Set.of(1, 2, 4, 7, 8, 14, 15, 16);
       for (Team t : teams.findAll()) {
         int slot = t.getDraftPosition();
@@ -56,7 +57,8 @@ public class DataInitializer {
         // later commissioner edits to unrelated custom team names.
         boolean managed = ("Team " + slot).equals(t.getName())
             || teamNames.contains(t.getName())
-            || "Bacon".equals(t.getName());
+            || "Bacon".equals(t.getName())
+            || "Matt0306".equals(t.getName());
         if (managed) {
           if (!desiredName.equals(t.getName())) t.setName(desiredName);
           if (!desiredDivision.equals(t.getDivision())) t.setDivision(desiredDivision);
@@ -103,6 +105,10 @@ public class DataInitializer {
       // One-time Season 2 CSV price migration. Update prices in place, preserving
       // Pokemon IDs, roster ownership, draft picks, and all league history.
       LeagueSettings league = settings.findById(1L).orElseThrow();
+      if (league.getRegularSeasonWeeks() == 10) {
+        league.setRegularSeasonWeeks(SeasonCalendar.REGULAR_SEASON_END);
+        settings.save(league);
+      }
       if (!league.isSeason2PricesApplied()) {
         for (Pokemon p : pokemon.findAll()) {
           Integer chartPrice = basePrices.get(p.getName());
@@ -126,7 +132,8 @@ public class DataInitializer {
         }
       }
 
-      if (matchups.count() == 0 && teams.count() == 16) schedule.generate();
+      // Idempotent official fixture migration; keeps matching recorded results.
+      if (teams.count() == 16) schedule.syncOfficialSchedule();
     };
   }
 

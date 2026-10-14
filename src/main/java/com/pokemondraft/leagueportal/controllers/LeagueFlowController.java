@@ -53,14 +53,19 @@ public class LeagueFlowController {
     if (u.getRole() == Role.MANAGER)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no lineup");
     LeagueSettings s = settings.findById(1L).orElseThrow();
-    lineups.finalizeExpired(s.getCurrentWeek());
+    int week = s.getCurrentWeek();
+    boolean required = SeasonCalendar.week(week).lineupRequired()
+        && lineups.hasMatchup(u.getTeamId(), week);
+    if (required) lineups.finalizeExpired(week);
     Map<String, Object> m = new LinkedHashMap<>();
-    m.put("week", s.getCurrentWeek());
+    m.put("week", week);
+    m.put("weekLabel", SeasonCalendar.week(week).label());
+    m.put("lineupRequired", required);
     m.put("deadline", s.getLineupDeadline());
-    m.put("locked", lineups.isLocked(u.getTeamId(), s.getCurrentWeek()));
-    m.put("roster", rosterView(u.getTeamId()));
-    WeeklySubmission ws =
-        submissions.findByTeamIdAndWeek(u.getTeamId(), s.getCurrentWeek()).orElse(null);
+    m.put("locked", required && lineups.isLocked(u.getTeamId(), week));
+    m.put("roster", required ? rosterView(u.getTeamId()) : List.of());
+    WeeklySubmission ws = required
+        ? submissions.findByTeamIdAndWeek(u.getTeamId(), week).orElse(null) : null;
     m.put("submission", ws);
     if (ws != null)
       m.put(
@@ -81,13 +86,22 @@ public class LeagueFlowController {
     return lineups.submit(u.getTeamId(), r.pokemonIds());
   }
 
+  @GetMapping("/calendar")
+  public List<Map<String, Object>> calendar(HttpSession session) {
+    auth.current(session);
+    return SeasonCalendar.weekDetails();
+  }
+
   @GetMapping("/schedule")
   public List<Map<String, Object>> schedule(HttpSession session) {
     auth.current(session);
     Map<Long, String> names = new HashMap<>();
     for (Team t : teams.findAll()) names.put(t.getId(), t.getName());
+    List<Matchup> games = matchups.findAllByOrderByWeekAscIdAsc().stream()
+        .filter(g -> g.getWeek() > 0).toList();
+    Map<Long, Map<String, Object>> lineupsByGame = lineups.matchupLineupsBatch(games);
     List<Map<String, Object>> out = new ArrayList<>();
-    for (Matchup x : matchups.findAllByOrderByWeekAscIdAsc()) {
+    for (Matchup x : games) {
       Map<String, Object> m = new LinkedHashMap<>();
       m.put("id", x.getId());
       m.put("week", x.getWeek());
@@ -98,7 +112,7 @@ public class LeagueFlowController {
       m.put("homeScore", x.getHomeScore());
       m.put("awayScore", x.getAwayScore());
       m.put("played", x.isPlayed());
-      m.putAll(lineups.matchupLineups(x));
+      m.putAll(lineupsByGame.get(x.getId()));
       out.add(m);
     }
     return out;

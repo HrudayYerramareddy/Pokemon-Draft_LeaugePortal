@@ -53,4 +53,14 @@ class WeeklyLineupServiceTest {
     assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
         () -> service.submit(1L, six)).getStatusCode());
   }
+  @Test void rejectsLineupsDuringFreeAgencyAndBothByes() {
+    for (int week : List.of(4, 8, 9)) {
+      config.setCurrentWeek(week);
+      assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
+          () -> service.submit(1L, six)).getStatusCode());
+      assertFalse(service.hasMatchup(1L, week));
+    }
+    verify(submissions, never()).save(any(WeeklySubmission.class));
+  }
+
 }

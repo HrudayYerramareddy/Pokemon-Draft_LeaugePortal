@@ -23,16 +23,22 @@ class FreeAgencyServiceTest {
   FreeAgencyService service;
   LeagueSettings config;
   Team team;
+  List<TransactionRecord> journal = new ArrayList<>();
 
   @BeforeEach void setup() {
     service = new FreeAgencyService(bids, teams, pokemon, roster, transactions, trades, matchups, settings);
     config = new LeagueSettings();
-    config.setCurrentWeek(3);
+    config.setCurrentWeek(4);
     when(settings.findById(1L)).thenReturn(Optional.of(config));
     Matchup third = new Matchup(3, 1L, 2L);
     third.setPlayed(true);
-    when(matchups.findByWeekOrderByIdAsc(3)).thenReturn(List.of(third));
-    when(matchups.findByWeekOrderByIdAsc(4)).thenReturn(List.of(new Matchup(4, 1L, 2L)));
+    when(matchups.findByWeekOrderByIdAsc(3)).thenReturn(Collections.nCopies(8, third));
+    when(transactions.findAllByOrderByCreatedAtDesc()).thenAnswer(inv -> List.copyOf(journal));
+    when(transactions.save(any(TransactionRecord.class))).thenAnswer(inv -> {
+      TransactionRecord record = inv.getArgument(0);
+      journal.add(record);
+      return record;
+    });
     team = new Team("Team 1", "Coach", "A", 1);
     team.setFaBudget(3);
     when(teams.findById(1L)).thenReturn(Optional.of(team));
@@ -50,9 +56,11 @@ class FreeAgencyServiceTest {
     when(bids.save(any(FreeAgentBid.class))).thenAnswer(inv -> inv.getArgument(0));
   }
 
-  @Test void windowRequiresCompletedWeekThreeAndNoWeekFourGames() {
+  @Test void windowRequiresCompletedWeekThreeAndCurrentWeekFour() {
     assertTrue(service.isWaiverWindowOpen());
-    config.setCurrentWeek(2);
+    config.setCurrentWeek(3);
+    assertFalse(service.isWaiverWindowOpen());
+    config.setCurrentWeek(5);
     assertFalse(service.isWaiverWindowOpen());
     config.setCurrentWeek(4);
     assertTrue(service.isWaiverWindowOpen());
@@ -94,12 +102,19 @@ class FreeAgencyServiceTest {
     assertEquals(1, service.submitBid(1L, 95L, 10L, 1).getAmount());
   }
 
-  @Test void processingIsSingleRunEvenWithNoBids() {
-    Map<String, Object> result = service.processBids();
-    assertEquals(0, result.get("winners"));
+  @Test void processesTwoSeparateWaiverPeriodsWithoutResettingBudgets() {
+    Map<String, Object> first = service.processBids();
+    assertEquals(0, first.get("winners"));
+    assertEquals(1, first.get("period"));
+    assertFalse(config.isWaiverProcessed());
+    assertTrue(service.isWaiverWindowOpen());
+
+    Map<String, Object> second = service.processBids();
+    assertEquals(2, second.get("period"));
     assertTrue(config.isWaiverProcessed());
     assertFalse(service.isWaiverWindowOpen());
     assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
         service::processBids).getStatusCode());
   }
+
 }

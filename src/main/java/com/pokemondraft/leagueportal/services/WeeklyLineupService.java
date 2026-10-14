@@ -35,6 +35,8 @@ public class WeeklyLineupService {
   public WeeklySubmission submit(Long teamId, List<Long> ids) {
     LeagueSettings s = settings.findById(1L).orElseThrow();
     int week = s.getCurrentWeek();
+    if (!SeasonCalendar.week(week).lineupRequired())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineup submissions during this week");
     finalizeExpired(week);
     if (s.getLineupDeadline() != null && !LocalDateTime.now().isBefore(s.getLineupDeadline()))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lineup deadline has passed");
@@ -66,8 +68,11 @@ public class WeeklyLineupService {
 
   @Transactional
   public void finalizeExpired(int week) {
+    if (week < 1 || week > SeasonCalendar.FINAL_WEEK
+        || !SeasonCalendar.week(week).lineupRequired()) return;
     LeagueSettings s = settings.findById(1L).orElse(null);
     if (s == null
+        || s.getCurrentWeek() != week
         || s.getLineupDeadline() == null
         || LocalDateTime.now().isBefore(s.getLineupDeadline())) return;
     for (Matchup m : matchups.findAllByOrderByWeekAscIdAsc())
@@ -113,6 +118,45 @@ public class WeeklyLineupService {
     return out;
   }
 
+  /**
+   * Fetch all submission flags for the published schedule in one repository call,
+   * instead of querying twice per game (and once per revealed Pokémon).
+   */
+  @Transactional
+  public Map<Long, Map<String, Object>> matchupLineupsBatch(List<Matchup> games) {
+    LeagueSettings s = settings.findById(1L).orElse(null);
+    if (s != null) finalizeExpired(s.getCurrentWeek());
+    Map<String, WeeklySubmission> submitted = new HashMap<>();
+    for (WeeklySubmission ws : submissions.findAll())
+      submitted.put(ws.getTeamId() + ":" + ws.getWeek(), ws);
+    Map<Long, Pokemon> allPokemon = pokemon.findAll().stream()
+        .collect(Collectors.toMap(Pokemon::getId, p -> p));
+    Map<Long, Map<String, Object>> result = new HashMap<>();
+    for (Matchup game : games) {
+      WeeklySubmission h = submitted.get(game.getHomeTeamId() + ":" + game.getWeek());
+      WeeklySubmission a = submitted.get(game.getAwayTeamId() + ":" + game.getWeek());
+      boolean reveal = h != null && a != null;
+      Map<String, Object> details = new LinkedHashMap<>();
+      details.put("revealed", reveal);
+      details.put("homeSubmitted", h != null);
+      details.put("awaySubmitted", a != null);
+      if (reveal) {
+        details.put("homeLineup", names(h, allPokemon));
+        details.put("awayLineup", names(a, allPokemon));
+        details.put("homeAutomatic", h.isAutomatic());
+        details.put("awayAutomatic", a.isAutomatic());
+      }
+      result.put(game.getId(), details);
+    }
+    return result;
+  }
+
+  public boolean hasMatchup(Long teamId, int week) {
+    return matchups.findAllByOrderByWeekAscIdAsc().stream()
+        .anyMatch(m -> m.getWeek() == week
+            && (teamId.equals(m.getHomeTeamId()) || teamId.equals(m.getAwayTeamId())));
+  }
+
   public boolean isLocked(Long teamId, int week) {
     Matchup m = matchupFor(teamId, week);
     return submissions.findByTeamIdAndWeek(m.getHomeTeamId(), week).isPresent()
@@ -135,6 +179,10 @@ public class WeeklyLineupService {
   private List<Map<String, Object>> names(WeeklySubmission s) {
     Map<Long, Pokemon> all =
         pokemon.findAll().stream().collect(Collectors.toMap(Pokemon::getId, p -> p));
+    return names(s, all);
+  }
+
+  private List<Map<String, Object>> names(WeeklySubmission s, Map<Long, Pokemon> all) {
     List<Map<String, Object>> out = new ArrayList<>();
     for (String x : s.getPokemonIdsCsv().split(",")) {
       Pokemon p = all.get(Long.valueOf(x));

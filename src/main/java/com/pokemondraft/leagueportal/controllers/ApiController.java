@@ -187,39 +187,19 @@ public class ApiController {
     auth.current(session);
     Map<Long, String> names = teamNames();
     return matchups.findAllByOrderByWeekAscIdAsc().stream()
+        .filter(m -> m.getWeek() >= 1)
         .map(m -> LeagueMapper.matchup(m, names))
         .toList();
   }
 
-  @PostMapping("/manager/schedule/generate")
-  public void generate(HttpSession session) {
-    auth.manager(session);
-    schedule.generate();
+  @GetMapping("/playoffs")
+  public Map<String, Object> playoffs(HttpSession session) {
+    auth.current(session);
+    return schedule.playoffBracket();
   }
 
-  public record ScheduleSeed(long seed) {}
-
-  @PostMapping("/manager/schedule/regenerate")
-  public void regenerate(@RequestBody ScheduleSeed r, HttpSession session) {
-    auth.manager(session);
-    LeagueSettings s = settings();
-    s.setScheduleSeed(r.seed());
-    settingsRepo.save(s);
-    schedule.generate();
-  }
-
-  public record MatchupEdit(Integer week, Long homeTeamId, Long awayTeamId) {}
-
-  @PutMapping("/manager/schedule/{id}")
-  public Matchup editMatchup(
-      @PathVariable Long id, @RequestBody MatchupEdit r, HttpSession session) {
-    auth.manager(session);
-    Matchup m = matchups.findById(id).orElseThrow();
-    if (r.week() != null) m.setWeek(r.week());
-    if (r.homeTeamId() != null) m.setHomeTeamId(r.homeTeamId());
-    if (r.awayTeamId() != null) m.setAwayTeamId(r.awayTeamId());
-    return matchups.save(m);
-  }
+  // The season uses a published fixture list. Schedule regeneration and
+  // arbitrary matchup editing are intentionally unavailable.
 
   public record ResultRequest(int homeScore, int awayScore) {}
 
@@ -243,6 +223,8 @@ public class ApiController {
     LeagueSettings s = settings();
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("week", s.getCurrentWeek());
+    out.put("lineupRequired", SeasonCalendar.week(s.getCurrentWeek()).lineupRequired());
+    out.put("weekLabel", SeasonCalendar.week(s.getCurrentWeek()).label());
     out.put("deadline", s.getLineupDeadline());
     out.put("roster", rosterView(u.getTeamId()));
     out.put(
@@ -259,6 +241,11 @@ public class ApiController {
     if (u.getRole() == Role.MANAGER)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no team lineup");
     LeagueSettings s = settings();
+    if (!SeasonCalendar.week(s.getCurrentWeek()).lineupRequired())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineups are submitted during this week");
+    if (matchups.findByWeekOrderByIdAsc(s.getCurrentWeek()).stream().noneMatch(m ->
+        u.getTeamId().equals(m.getHomeTeamId()) || u.getTeamId().equals(m.getAwayTeamId())))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No scheduled match for this team");
     if (s.getLineupDeadline() != null && LocalDateTime.now().isAfter(s.getLineupDeadline()))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lineup deadline has passed");
     if (r.pokemonIds() == null || new HashSet<>(r.pokemonIds()).size() != 6)
@@ -284,6 +271,8 @@ public class ApiController {
   public List<Map<String, Object>> weekLineups(@PathVariable int week, HttpSession session) {
     AppUser u = auth.current(session);
     LeagueSettings s = settings();
+    if (week < 1 || week > SeasonCalendar.FINAL_WEEK || !SeasonCalendar.week(week).lineupRequired())
+      return List.of();
     boolean reveal =
         u.getRole() == Role.MANAGER
             || (s.getLineupDeadline() != null
@@ -359,11 +348,16 @@ public class ApiController {
     auth.manager(session);
     LeagueSettings s = settings();
     if (r.leagueName() != null) s.setLeagueName(r.leagueName());
-    if (r.currentWeek() != null) s.setCurrentWeek(r.currentWeek());
-    if (r.regularSeasonWeeks() != null) s.setRegularSeasonWeeks(r.regularSeasonWeeks());
+    if (r.currentWeek() != null) {
+      if (r.currentWeek() < 1 || r.currentWeek() > SeasonCalendar.FINAL_WEEK)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Week must be 1–16");
+      s.setCurrentWeek(r.currentWeek());
+    }
+    if (r.regularSeasonWeeks() != null && r.regularSeasonWeeks() != SeasonCalendar.REGULAR_SEASON_END)
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Published schedule ends in Week 13");
     if (r.draftOpen() != null) s.setDraftOpen(r.draftOpen());
     if (r.snakeDraft() != null) s.setSnakeDraft(r.snakeDraft());
-    if (r.scheduleSeed() != null) s.setScheduleSeed(r.scheduleSeed());
+    // Random seeds cannot change the published season schedule.
     if (r.lineupDeadline() != null)
       s.setLineupDeadline(
           r.lineupDeadline().isBlank() ? null : LocalDateTime.parse(r.lineupDeadline()));
@@ -387,6 +381,7 @@ public class ApiController {
     m.put("playoffSeedModeEnabled", s.isPlayoffSeedModeEnabled());
     m.put("waiverProcessed", s.isWaiverProcessed());
     m.put("waiverWindowOpen", freeAgency.isWaiverWindowOpen());
+    m.put("waiverPeriodsProcessed", freeAgency.waiverPeriodsProcessed());
     return m;
   }
 

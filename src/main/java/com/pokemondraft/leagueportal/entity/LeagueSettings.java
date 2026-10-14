@@ -8,7 +8,7 @@ public class LeagueSettings {
   @Id private Long id = 1L;
   private String leagueName = "Pokemon Draft League Portal";
   private int currentWeek = 1;
-  private int regularSeasonWeeks = 10;
+  private int regularSeasonWeeks = 13;
   private boolean draftOpen = true;
   private boolean snakeDraft = true;
   private long scheduleSeed = 2026L;
