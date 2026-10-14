@@ -15,7 +15,6 @@ public class LeagueSettings {
   private LocalDateTime lineupDeadline;
   private boolean waiverProcessed;
   private boolean season2PricesApplied;
-  private boolean season2CoachNamesApplied;
 
   public LeagueSettings() {}
 
@@ -79,9 +78,6 @@ public class LeagueSettings {
     lineupDeadline = v;
   }
 
-
-  public boolean isSeason2CoachNamesApplied() { return season2CoachNamesApplied; }
-  public void setSeason2CoachNamesApplied(boolean value) { season2CoachNamesApplied = value; }
 
   public boolean isSeason2PricesApplied() { return season2PricesApplied; }
   public void setSeason2PricesApplied(boolean value) { season2PricesApplied = value; }

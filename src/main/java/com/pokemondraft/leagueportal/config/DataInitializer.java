@@ -33,20 +33,20 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, encoder.encode("password"), Role.COACH, saved.get(i - 1).getId()));
       }
-      // Apply all 16 draft-sheet coach names once, retaining team IDs and rosters.
-      LeagueSettings coachSettings = settings.findById(1L).orElseThrow();
-      if (!coachSettings.isSeason2CoachNamesApplied()) {
-        List<String> coachNames = List.of(
-            "Bingus", "Shuckle2306", "Garrett", "wide_right_", "Brylo", "TBlocks", "Rover", "Sharks", "Sparky", "Kief", "MikeO", "Zandy", "Pudding", "Zeke", "TheMartian", "CWC");
-        for (Team t : teams.findAll()) {
-          int slot = t.getDraftPosition();
-          if (slot >= 1 && slot <= coachNames.size()) {
-            t.setCoachName(coachNames.get(slot - 1));
-            teams.save(t);
-          }
+      // Upgrade placeholder coach names without adding a database column.
+      // Do not overwrite coach names already customized by the commissioner.
+      List<String> coachNames = List.of(
+          "Bingus", "Shuckle2306", "Garrett", "wide_right_",
+          "Brylo", "TBlocks", "Rover", "Sharks",
+          "Sparky", "Kief", "MikeO", "Zandy",
+          "Pudding", "Zeke", "TheMartian", "CWC");
+      for (Team t : teams.findAll()) {
+        int slot = t.getDraftPosition();
+        if (slot >= 1 && slot <= coachNames.size()
+            && ("Coach " + slot).equals(t.getCoachName())) {
+          t.setCoachName(coachNames.get(slot - 1));
+          teams.save(t);
         }
-        coachSettings.setSeason2CoachNamesApplied(true);
-        settings.save(coachSettings);
       }
       for (Team t : teams.findAll()) {
         if (t.getFaBudget() == 100) {
