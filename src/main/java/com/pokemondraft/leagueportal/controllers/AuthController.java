@@ -3,7 +3,8 @@ package com.pokemondraft.leagueportal.controllers;
 import com.pokemondraft.leagueportal.entity.AppUser;
 import com.pokemondraft.leagueportal.services.AuthService;
 import jakarta.servlet.http.HttpSession;
-import java.util.Map;
+import com.pokemondraft.leagueportal.dto.UserDto;
+import com.pokemondraft.leagueportal.mapper.LeagueMapper;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,8 +19,8 @@ public class AuthController {
   public record LoginRequest(String username, String password) {}
 
   @PostMapping("/login")
-  public Map<String, Object> login(@RequestBody LoginRequest req, HttpSession session) {
-    return safe(auth.login(req.username(), req.password(), session));
+  public UserDto login(@RequestBody LoginRequest req, HttpSession session) {
+    return LeagueMapper.authUser(auth.login(req.username(), req.password(), session));
   }
 
   @PostMapping("/logout")
@@ -28,19 +29,8 @@ public class AuthController {
   }
 
   @GetMapping("/me")
-  public Map<String, Object> me(HttpSession session) {
-    return safe(auth.current(session));
+  public UserDto me(HttpSession session) {
+    return LeagueMapper.authUser(auth.current(session));
   }
 
-  private Map<String, Object> safe(AppUser u) {
-    return Map.of(
-        "id",
-        u.getId(),
-        "username",
-        u.getUsername(),
-        "role",
-        u.getRole().name(),
-        "teamId",
-        u.getTeamId() == null ? "" : u.getTeamId());
-  }
 }

@@ -1,5 +1,7 @@
 package com.pokemondraft.leagueportal.controllers;
 
+import com.pokemondraft.leagueportal.dto.*;
+import com.pokemondraft.leagueportal.mapper.LeagueMapper;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.*;
@@ -62,7 +64,7 @@ public class ApiController {
     AppUser u = auth.current(session);
     LeagueSettings s = settings();
     Map<String, Object> out = new LinkedHashMap<>();
-    out.put("user", safeUser(u));
+    out.put("user", LeagueMapper.user(u));
     out.put("settings", settingsMap(s));
     out.put("teams", teams.findAll());
     if (u.getTeamId() != null) out.put("myRoster", rosterView(u.getTeamId()));
@@ -125,22 +127,16 @@ public class ApiController {
   }
 
   @GetMapping("/rosters")
-  public List<Map<String, Object>> rosters(HttpSession session) {
+  public List<TeamRosterDto> rosters(HttpSession session) {
     auth.current(session);
     return teams.findAll().stream()
         .sorted(Comparator.comparing(Team::getName))
-        .map(
-            t -> {
-              Map<String, Object> m = new LinkedHashMap<>();
-              m.put("team", t);
-              m.put("pokemon", rosterView(t.getId()));
-              return m;
-            })
+        .map(t -> new TeamRosterDto(t, rosterView(t.getId())))
         .toList();
   }
 
   @GetMapping("/rosters/{teamId}")
-  public List<Map<String, Object>> roster(@PathVariable Long teamId, HttpSession session) {
+  public List<RosterPokemonDto> roster(@PathVariable Long teamId, HttpSession session) {
     auth.current(session);
     return rosterView(teamId);
   }
@@ -183,11 +179,11 @@ public class ApiController {
   }
 
   @GetMapping("/schedule")
-  public List<Map<String, Object>> schedule(HttpSession session) {
+  public List<MatchupDto> schedule(HttpSession session) {
     auth.current(session);
     Map<Long, String> names = teamNames();
     return matchups.findAllByOrderByWeekAscIdAsc().stream()
-        .map(m -> matchupView(m, names))
+        .map(m -> LeagueMapper.matchup(m, names))
         .toList();
   }
 
@@ -375,15 +371,6 @@ public class ApiController {
     return settingsRepo.findById(1L).orElseGet(() -> settingsRepo.save(new LeagueSettings()));
   }
 
-  private Map<String, Object> safeUser(AppUser u) {
-    Map<String, Object> m = new LinkedHashMap<>();
-    m.put("id", u.getId());
-    m.put("username", u.getUsername());
-    m.put("role", u.getRole().name());
-    m.put("teamId", u.getTeamId());
-    return m;
-  }
-
   private Map<String, Object> settingsMap(LeagueSettings s) {
     Map<String, Object> m = new LinkedHashMap<>();
     m.put("leagueName", s.getLeagueName());
@@ -401,55 +388,22 @@ public class ApiController {
     return teams.findAll().stream().collect(Collectors.toMap(Team::getId, Team::getName));
   }
 
-  private List<Map<String, Object>> rosterView(Long teamId) {
+  private List<RosterPokemonDto> rosterView(Long teamId) {
     Map<Long, Pokemon> p =
         pokemon.findAll().stream().collect(Collectors.toMap(Pokemon::getId, x -> x));
     return roster.findByTeamId(teamId).stream()
-        .map(
-            e -> {
-              Pokemon mon = p.get(e.getPokemonId());
-              Map<String, Object> m = new LinkedHashMap<>();
-              m.put("entryId", e.getId());
-              m.put("pokemonId", e.getPokemonId());
-              m.put("name", mon == null ? "Unknown" : mon.getName());
-              m.put("price", mon == null ? 0 : mon.getPrice());
-              return m;
-            })
-        .sorted(Comparator.comparing(x -> String.valueOf(x.get("name"))))
+        .map(e -> LeagueMapper.rosterPokemon(e, p.get(e.getPokemonId())))
+        .sorted(Comparator.comparing(RosterPokemonDto::name))
         .toList();
   }
 
-  private List<Map<String, Object>> pickViews() {
+  private List<DraftPickDto> pickViews() {
     Map<Long, String> tn = teamNames();
     Map<Long, String> pn =
         pokemon.findAll().stream().collect(Collectors.toMap(Pokemon::getId, Pokemon::getName));
     return picks.findAllByOrderByOverallPickAsc().stream()
-        .map(
-            p -> {
-              Map<String, Object> m = new LinkedHashMap<>();
-              m.put("overallPick", p.getOverallPick());
-              m.put("round", p.getRoundNumber());
-              m.put("teamId", p.getTeamId());
-              m.put("teamName", tn.get(p.getTeamId()));
-              m.put("pokemonId", p.getPokemonId());
-              m.put("pokemonName", pn.get(p.getPokemonId()));
-              return m;
-            })
+        .map(p -> LeagueMapper.draftPick(p, tn, pn))
         .toList();
-  }
-
-  private Map<String, Object> matchupView(Matchup m, Map<Long, String> names) {
-    Map<String, Object> out = new LinkedHashMap<>();
-    out.put("id", m.getId());
-    out.put("week", m.getWeek());
-    out.put("homeTeamId", m.getHomeTeamId());
-    out.put("awayTeamId", m.getAwayTeamId());
-    out.put("homeTeam", names.get(m.getHomeTeamId()));
-    out.put("awayTeam", names.get(m.getAwayTeamId()));
-    out.put("homeScore", m.getHomeScore());
-    out.put("awayScore", m.getAwayScore());
-    out.put("played", m.isPlayed());
-    return out;
   }
 
   private Map<String, Object> submissionView(WeeklySubmission s) {

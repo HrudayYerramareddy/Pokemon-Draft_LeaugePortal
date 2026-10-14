@@ -1,5 +1,7 @@
 package com.pokemondraft.leagueportal.controllers;
 
+import com.pokemondraft.leagueportal.dto.LineupPokemonDto;
+import com.pokemondraft.leagueportal.mapper.LeagueMapper;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.*;
@@ -102,12 +104,11 @@ public class LeagueFlowController {
     return out;
   }
 
-  private List<Map<String, Object>> rosterView(Long teamId) {
-    List<Map<String, Object>> out = new ArrayList<>();
+  private List<LineupPokemonDto> rosterView(Long teamId) {
+    List<LineupPokemonDto> out = new ArrayList<>();
     for (RosterEntry e : roster.findByTeamId(teamId)) {
       Pokemon p = pokemon.findById(e.getPokemonId()).orElse(null);
-      if (p != null)
-        out.add(Map.of("pokemonId", p.getId(), "name", p.getName(), "price", p.getPrice()));
+      if (p != null) out.add(LeagueMapper.lineupPokemon(p));
     }
     return out;
   }
