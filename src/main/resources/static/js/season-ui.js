@@ -20,7 +20,7 @@ function seasonMatchCard(m) {
          <button class="primary save-result" data-id="${m.id}">Save Result</button>
          ${m.played ? `<button class="secondary clear-result" data-id="${m.id}">Clear</button>` : ""}
        </div>` : "";
-  return `<div class="season-match">
+  return `<div class="season-match ${m.revealed ? "season-match--revealed" : ""}">
     <div class="season-versus"><strong>${teamBrand(m.homeTeamId)}</strong><span>${score}</span><strong>${teamBrand(m.awayTeamId)}</strong></div>
     ${status}${tools}</div>`;
 }
