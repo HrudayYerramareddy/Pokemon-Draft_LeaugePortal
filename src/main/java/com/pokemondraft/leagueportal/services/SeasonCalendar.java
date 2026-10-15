@@ -15,6 +15,20 @@ public final class SeasonCalendar {
   public record Fixture(int week, int homeSlot, int awaySlot) {}
   public record WeekInfo(int week, String dates, String label, String kind, boolean lineupRequired) {}
 
+  // Official team identities from the published schedule. These are lookup
+  // labels, not a request to rename rows in the production team table.
+  private static final List<String> SLOT_NAMES = List.of(
+      "Burn", "Matty/Shuckle", "JackApples", "Wide Right",
+      "BryloRen", "TBlocks", "Rover", "ArmTheSharks",
+      "Sparky", "CoachKief", "MikeO", "Zandy",
+      "DonnyKong", "Zeke", "Matt3024", "CWC");
+
+  public static String teamNameForSlot(int slot) {
+    if (slot < 1 || slot > SLOT_NAMES.size())
+      throw new IllegalArgumentException("Invalid team slot " + slot);
+    return SLOT_NAMES.get(slot - 1);
+  }
+
   public static final int REGULAR_SEASON_END = 13;
   public static final int FINAL_WEEK = 16;
   private static final List<Integer> GAME_WEEKS = List.of(1, 2, 3, 5, 6, 7, 10, 11, 12, 13);

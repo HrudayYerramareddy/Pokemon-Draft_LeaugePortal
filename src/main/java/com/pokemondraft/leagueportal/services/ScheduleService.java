@@ -33,13 +33,13 @@ public class ScheduleService {
 
   @Transactional
   public void syncOfficialSchedule() {
-    Map<Integer, Team> bySlot = new HashMap<>();
-    for (Team t : teams.findAll()) {
-      if (bySlot.put(t.getDraftPosition(), t) != null)
-        throw new IllegalStateException("Duplicate team draft position: " + t.getDraftPosition());
+    List<Team> currentTeams = teams.findAll();
+    Map<Integer, Team> bySlot = resolveOfficialTeams(currentTeams);
+    if (bySlot.size() != 16) {
+      log.warn("Not reconciling schedule: couldn't identify all 16 official teams by name " +
+          "or by unique draft position. Existing database schedule remains unchanged.");
+      return;
     }
-    if (bySlot.size() != 16)
-      throw new IllegalStateException("Official schedule requires exactly 16 teams");
 
     List<Matchup> unused = new ArrayList<>();
     for (Matchup m : matchups.findAllByOrderByWeekAscIdAsc())
@@ -81,6 +81,44 @@ public class ScheduleService {
     }
     recalculateStandings();
     syncPlayoffs();
+  }
+
+  private static final org.slf4j.Logger log =
+      org.slf4j.LoggerFactory.getLogger(ScheduleService.class);
+
+  /**
+   * Existing Neon draft_position values need not be unique. Prefer matching
+   * the spreadsheet team names (or their stored coach_name), so IDs, roster
+   * ownership and Neon team rows stay unchanged. Fresh seed databases still
+   * have Team 1..16 and use the unique draft positions as a fallback.
+   */
+  private Map<Integer, Team> resolveOfficialTeams(List<Team> all) {
+    if (all.size() != 16) return Map.of();
+
+    Map<Integer, Team> named = new HashMap<>();
+    Set<Long> allocated = new HashSet<>();
+    for (int slot = 1; slot <= 16; slot++) {
+      String official = SeasonCalendar.teamNameForSlot(slot);
+      List<Team> found = all.stream()
+          .filter(t -> official.equalsIgnoreCase(t.getCoachName())).toList();
+      if (found.isEmpty())
+        found = all.stream()
+            .filter(t -> official.equalsIgnoreCase(t.getName())).toList();
+      if (found.size() != 1 || !allocated.add(found.get(0).getId())) {
+        named.clear();
+        break;
+      }
+      named.put(slot, found.get(0));
+    }
+    if (named.size() == 16) return named;
+
+    Map<Integer, Team> positions = new HashMap<>();
+    for (Team t : all) {
+      int slot = t.getDraftPosition();
+      if (slot < 1 || slot > 16 || positions.putIfAbsent(slot, t) != null)
+        return Map.of();
+    }
+    return positions.size() == 16 ? positions : Map.of();
   }
 
   private boolean sameTeams(Matchup m, Long a, Long b) {
