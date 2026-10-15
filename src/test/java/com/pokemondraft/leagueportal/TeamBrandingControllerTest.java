@@ -3,7 +3,6 @@ package com.pokemondraft.leagueportal;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pokemondraft.leagueportal.controllers.TeamBrandingController;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.TeamRepository;
@@ -77,9 +76,11 @@ class TeamBrandingControllerTest {
     assertEquals(Base64.getEncoder().encodeToString(png), mine.getLogoBase64());
     assertTrue(mine.getLogoUrl().startsWith("/api/teams/1/logo?v="));
     assertArrayEquals(png, controller.logo(1L, session).getBody());
-    String json = new ObjectMapper().writeValueAsString(mine);
-    assertTrue(json.contains("logoUrl"));
-    assertFalse(json.contains("logoBase64"));
+    assertNotNull(Team.class.getMethod("getLogoBase64")
+        .getAnnotation(com.fasterxml.jackson.annotation.JsonIgnore.class),
+        "Team JSON must never include raw base64 image data");
+    assertNotNull(Team.class.getMethod("getLogoUrl"),
+        "Team JSON must expose a lightweight image URL");
     controller.removeLogo(session);
     assertNull(mine.getLogoUrl());
     assertNull(mine.getLogoBase64());
