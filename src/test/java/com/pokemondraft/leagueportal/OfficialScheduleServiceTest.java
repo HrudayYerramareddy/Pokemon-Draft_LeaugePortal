@@ -16,7 +16,7 @@ class OfficialScheduleServiceTest {
   TeamRepository teams = mock(TeamRepository.class);
   MatchupRepository matchups = mock(MatchupRepository.class);
   LeagueSettingsRepository settings = mock(LeagueSettingsRepository.class);
-  ScheduleService service = new ScheduleService(teams, matchups, settings);
+  ScheduleService service = new ScheduleService(teams, matchups, settings, mock(WeekLockService.class));
   List<Team> teamRows = new ArrayList<>();
   List<Matchup> rows = new ArrayList<>();
   AtomicLong next = new AtomicLong(100);

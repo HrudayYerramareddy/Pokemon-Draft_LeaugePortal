@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.ScheduleService;
+import com.pokemondraft.leagueportal.services.WeekLockService;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
@@ -13,7 +14,7 @@ class ScheduleServiceTest {
     TeamRepository teams = mock(TeamRepository.class);
     MatchupRepository matchups = mock(MatchupRepository.class);
     LeagueSettingsRepository settings = mock(LeagueSettingsRepository.class);
-    ScheduleService schedule = new ScheduleService(teams, matchups, settings);
+    ScheduleService schedule = new ScheduleService(teams, matchups, settings, mock(WeekLockService.class));
     Team home = new Team("Home", "Coach", "A", 1);
     Team away = new Team("Away", "Coach", "B", 2);
     org.springframework.test.util.ReflectionTestUtils.setField(home, "id", 1L);

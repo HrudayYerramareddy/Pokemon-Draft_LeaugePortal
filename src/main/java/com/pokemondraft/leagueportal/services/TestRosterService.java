@@ -19,6 +19,12 @@ public class TestRosterService {
   private final DraftPickRepository picks;
   private final WeeklySubmissionRepository submissions;
   private final TransactionRecordRepository transactions;
+  private final FreeAgentBidRepository bids;
+  private final TradeOfferRepository trades;
+  private final MatchupRepository matchups;
+  private final LeagueSettingsRepository settings;
+  private final WeekLockRepository weekLocks;
+  private final ScheduleService schedule;
 
   public TestRosterService(
       TeamRepository teams,
@@ -26,13 +32,25 @@ public class TestRosterService {
       RosterEntryRepository roster,
       DraftPickRepository picks,
       WeeklySubmissionRepository submissions,
-      TransactionRecordRepository transactions) {
+      TransactionRecordRepository transactions,
+      FreeAgentBidRepository bids,
+      TradeOfferRepository trades,
+      MatchupRepository matchups,
+      LeagueSettingsRepository settings,
+      WeekLockRepository weekLocks,
+      ScheduleService schedule) {
     this.teams = teams;
     this.pokemon = pokemon;
     this.roster = roster;
     this.picks = picks;
     this.submissions = submissions;
     this.transactions = transactions;
+    this.bids = bids;
+    this.trades = trades;
+    this.matchups = matchups;
+    this.settings = settings;
+    this.weekLocks = weekLocks;
+    this.schedule = schedule;
   }
 
   @Transactional
@@ -137,23 +155,75 @@ public class TestRosterService {
         "teams", teamList.size(), "pokemonAssigned", assigned, "highestRosterValue", highestValue);
   }
 
+
+  public record ResetPreview(long draftPicks, long rosterEntries, long bids,
+      long trades, long transactions, long weeklyLineups, long playedGames,
+      long lockedWeeks) {}
+
+  @Transactional(readOnly = true)
+  public ResetPreview resetPreview() {
+    return new ResetPreview(
+        picks.count(), roster.count(), bids.count(), trades.count(),
+        transactions.count(), submissions.count(),
+        matchups.findAll().stream().filter(Matchup::isPlayed).count(),
+        weekLocks.count());
+  }
+
+  /**
+   * Reset every post-draft activity in one database transaction. League setup,
+   * coach accounts, team IDs/names/branding/divisions, the Pokémon pool/prices,
+   * draft order, season fixture template and league configuration stay intact.
+   * No scheduled job, deployment, or startup routine calls this method.
+   */
   @Transactional
-  public Map<String, Integer> clearRosters() {
-    int removed = (int) roster.count();
-    roster.deleteAll();
-    picks.deleteAll();
-    submissions.deleteAll();
+  public Map<String, Integer> resetLeague() {
+    int cleared = (int) roster.count();
+    bids.deleteAllInBatch();
+    trades.deleteAllInBatch();
+    transactions.deleteAllInBatch();
+    submissions.deleteAllInBatch();
+    picks.deleteAllInBatch();
+    roster.deleteAllInBatch();
+    weekLocks.deleteAllInBatch();
+
     for (Pokemon p : pokemon.findAll()) {
       if (p.isDrafted()) {
         p.setDrafted(false);
         pokemon.save(p);
       }
     }
-    transactions.save(
-        new TransactionRecord(
-            "TEST_RESET",
-            "Commissioner cleared all rosters, draft picks, and weekly lineup submissions for"
-                + " testing."));
-    return Map.of("pokemonRemoved", removed);
+    for (Matchup m : matchups.findAll()) {
+      if (m.getWeek() < 1 || m.getWeek() > SeasonCalendar.REGULAR_SEASON_END
+          || !SeasonCalendar.isRegularGameWeek(m.getWeek())) {
+        // Remove historical superseded fixtures and dynamically generated
+        // playoff rounds. The published regular-season schedule remains.
+        matchups.delete(m);
+      } else if (m.isPlayed() || m.getHomeScore() != null || m.getAwayScore() != null) {
+        m.setPlayed(false);
+        m.setHomeScore(null);
+        m.setAwayScore(null);
+        matchups.save(m);
+      }
+    }
+
+    for (Team t : teams.findAll()) {
+      // The only resettable team properties are post-draft season state.
+      t.setWins(0);
+      t.setLosses(0);
+      t.setDifferential(0);
+      t.setManualRank(0);
+      t.setFaBudget(3);
+      teams.save(t);
+    }
+    LeagueSettings league = settings.findById(1L).orElseThrow();
+    league.setCurrentWeek(1);
+    league.setDraftOpen(true);
+    league.setWaiverProcessed(false);
+    league.setLineupDeadline(null);
+    settings.save(league);
+
+    // Reconcile missing published fixtures, not teams or pre-draft metadata.
+    schedule.syncOfficialSchedule();
+    return Map.of("pokemonRemoved", cleared);
   }
 }

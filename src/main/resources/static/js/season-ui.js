@@ -2,7 +2,7 @@
 let seasonSelectedWeek = "all";
 let seasonSelectedTeam = "all";
 
-function seasonMatchCard(m) {
+function seasonMatchCard(m, locked = false) {
   const score = m.played ? m.homeScore + " – " + m.awayScore : "vs";
   const status = m.revealed
     ? '<div class="lineup-reveal"><div><h4>' + teamBrand(m.homeTeamId) + '</h4><div class="schedule-six-grid">' +
@@ -13,7 +13,9 @@ function seasonMatchCard(m) {
       (m.homeSubmitted ? "✓" : "○") + " " + teamBrand(m.homeTeamId) + " · " +
       (m.awaySubmitted ? "✓" : "○") + " " + teamBrand(m.awayTeamId) +
       " — lineups hidden until both submit</p>";
-  const tools = state.user.role === "MANAGER"
+  const tools = locked
+    ? '<p class="season-locked-note">🔒 Final results — locked by commissioner</p>'
+    : state.user.role === "MANAGER"
     ? `<div class="toolbar season-score-controls">
          <input class="score-home inline-input" data-id="${m.id}" type="number" min="0" value="${m.homeScore ?? ""}" placeholder="Home score">
          <input class="score-away inline-input" data-id="${m.id}" type="number" min="0" value="${m.awayScore ?? ""}" placeholder="Away score">
@@ -60,8 +62,8 @@ function wireSeasonScores(scope, refresh, playoff = false) {
 }
 
 renderSchedule = async function () {
-  const [games, calendar] = await Promise.all([
-    api("/api/flow/schedule"), api("/api/flow/calendar")
+  const [games, calendar, lockedWeeks] = await Promise.all([
+    api("/api/flow/schedule"), api("/api/flow/calendar"), api("/api/weeks/locks")
   ]);
   const options = state.teams.slice().sort((a,b) => a.name.localeCompare(b.name));
   const root = $("#page-schedule");
@@ -95,7 +97,7 @@ renderSchedule = async function () {
           <p>${w.kind === "free_agency" ? "Free agency / waivers only." : "League-wide bye week."}</p>
           ${(w.waiverNotes || []).map(note => `<p class="muted">${esc(note)}</p>`).join("")}</div>`;
       } else if (rows.length) {
-        body = rows.map(seasonMatchCard).join("");
+        body = rows.map(m => seasonMatchCard(m, lockedWeeks[String(m.week)] === true)).join("");
       } else if (w.kind === "playoffs") {
         body = '<div class="season-off-week">Playoff matchups will appear as seeds and winners are determined. See the Playoffs tab.</div>';
       } else {
@@ -103,7 +105,7 @@ renderSchedule = async function () {
       }
       return `<section class="card season-week"><div class="season-week-head">
           <div><div class="eyebrow">${esc(w.dates)}</div><h2>Week ${w.week}: ${esc(w.label)}</h2></div>
-          <span class="season-kind">${w.kind === "free_agency" ? "FREE AGENCY" : w.kind === "bye" ? "BYE" : w.kind === "playoffs" ? "PLAYOFFS" : "MATCHES"}</span>
+          <div>${lockedWeeks[String(w.week)] === true ? '<span class="season-week-lock">🔒 Results locked</span>' : ""}<span class="season-kind">${w.kind === "free_agency" ? "FREE AGENCY" : w.kind === "bye" ? "BYE" : w.kind === "playoffs" ? "PLAYOFFS" : "MATCHES"}</span></div>
         </div><div class="season-matches">${body}</div></section>`;
     }).join("");
     hydratePokemonCards(target);
@@ -128,14 +130,16 @@ renderSchedule = async function () {
 };
 
 renderPlayoffs = async function () {
-  const bracket = await api("/api/playoffs");
+  const [bracket, lockedWeeks] = await Promise.all([
+    api("/api/playoffs"), api("/api/weeks/locks")
+  ]);
   const root = $("#page-playoffs");
   const stage = (week, title, dates) => {
     const games = bracket.games.filter(g => g.week === week);
     return `<section class="card playoff-stage"><div class="eyebrow">Week ${week} · ${esc(dates)}</div>
       <h2>${esc(title)}</h2><div class="playoff-games">${games.map(game => {
         const score = game.played ? `${game.homeScore} – ${game.awayScore}` : "vs";
-        const inputs = game.ready && state.user.role === "MANAGER"
+        const inputs = game.ready && state.user.role === "MANAGER" && lockedWeeks[String(week)] !== true
           ? `<div class="toolbar season-score-controls">
                <input class="score-home inline-input" data-id="${game.id}" type="number" min="0" value="${game.homeScore ?? ""}" placeholder="Home">
                <input class="score-away inline-input" data-id="${game.id}" type="number" min="0" value="${game.awayScore ?? ""}" placeholder="Away">
@@ -146,6 +150,7 @@ renderPlayoffs = async function () {
           <div class="playoff-game-label">${esc(game.division)} · ${esc(game.round)}</div>
           <div class="season-versus"><strong>${teamBrand(game.homeTeam)}</strong><span>${score}</span><strong>${teamBrand(game.awayTeam)}</strong></div>
           ${inputs}
+          ${lockedWeeks[String(week)] === true ? '<p class="season-locked-note">🔒 Results locked</p>' : ""}
           ${game.ready ? "" : '<div class="muted small">Waiting for qualification or earlier round results</div>'}
         </div>`;
       }).join("")}</div></section>`;

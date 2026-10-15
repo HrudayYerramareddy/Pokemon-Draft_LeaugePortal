@@ -13,12 +13,15 @@ public class ScheduleService {
   private final TeamRepository teams;
   private final MatchupRepository matchups;
   private final LeagueSettingsRepository settingsRepo;
+  private final WeekLockService weekLocks;
 
   public ScheduleService(
-      TeamRepository teams, MatchupRepository matchups, LeagueSettingsRepository settingsRepo) {
+      TeamRepository teams, MatchupRepository matchups, LeagueSettingsRepository settingsRepo,
+      WeekLockService weekLocks) {
     this.teams = teams;
     this.matchups = matchups;
     this.settingsRepo = settingsRepo;
+    this.weekLocks = weekLocks;
   }
 
   /**
@@ -152,6 +155,7 @@ public class ScheduleService {
   @Transactional
   public void setResult(Long matchupId, int homeScore, int awayScore) {
     Matchup m = matchups.findById(matchupId).orElseThrow();
+    weekLocks.requireEditable(m.getWeek());
     if (SeasonCalendar.isPlayoffWeek(m.getWeek()) && homeScore == awayScore)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Playoff matches require a winner");
     if (m.getWeek() < 1 || m.getWeek() > SeasonCalendar.FINAL_WEEK || homeScore < 0 || awayScore < 0)
@@ -167,6 +171,7 @@ public class ScheduleService {
   @Transactional
   public void clearResult(Long matchupId) {
     Matchup m = matchups.findById(matchupId).orElseThrow();
+    weekLocks.requireEditable(m.getWeek());
     m.setHomeScore(null);
     m.setAwayScore(null);
     m.setPlayed(false);

@@ -26,17 +26,4 @@ public class TestRosterController {
     return testRosters.fillTestRosters();
   }
 
-  public record ClearRostersRequest(String confirmation) {}
-
-  @PostMapping("/clear-rosters")
-  public Map<String, Integer> clearRosters(
-      @RequestBody ClearRostersRequest request, HttpSession session) {
-    auth.manager(session);
-    if (request == null || !"CLEAR ALL ROSTERS".equals(request.confirmation())) {
-      throw new org.springframework.web.server.ResponseStatusException(
-          org.springframework.http.HttpStatus.BAD_REQUEST,
-          "Type CLEAR ALL ROSTERS to confirm this destructive test reset.");
-    }
-    return testRosters.clearRosters();
-  }
 }
