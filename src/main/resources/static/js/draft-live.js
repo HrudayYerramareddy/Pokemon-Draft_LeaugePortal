@@ -26,7 +26,7 @@
       .map(
         (team) => `<th scope="col" title="${esc(team.name)}">
           <span class="draft-team-position">#${team.draftPosition}</span>
-          <span class="draft-team-name">${esc(team.name)}</span>
+          <span class="draft-team-name">${teamBrand(team, "xs")}</span>
         </th>`,
       )
       .join("");

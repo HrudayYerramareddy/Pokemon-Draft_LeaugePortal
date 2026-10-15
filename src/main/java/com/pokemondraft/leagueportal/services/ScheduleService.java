@@ -95,6 +95,18 @@ public class ScheduleService {
   private Map<Integer, Team> resolveOfficialTeams(List<Team> all) {
     if (all.size() != 16) return Map.of();
 
+    // Persist fixture positions once. Coach-owned display names can then change
+    // freely without breaking the published season on subsequent Render restarts.
+    Map<Integer, Team> stored = new HashMap<>();
+    for (Team t : all) {
+      Integer slot = t.getOfficialSlot();
+      if (slot == null || slot < 1 || slot > 16 || stored.putIfAbsent(slot, t) != null) {
+        stored.clear();
+        break;
+      }
+    }
+    if (stored.size() == 16) return stored;
+
     Map<Integer, Team> named = new HashMap<>();
     Set<Long> allocated = new HashSet<>();
     for (int slot = 1; slot <= 16; slot++) {
@@ -110,7 +122,7 @@ public class ScheduleService {
       }
       named.put(slot, found.get(0));
     }
-    if (named.size() == 16) return named;
+    if (named.size() == 16) return saveOfficialSlots(named);
 
     Map<Integer, Team> positions = new HashMap<>();
     for (Team t : all) {
@@ -118,7 +130,18 @@ public class ScheduleService {
       if (slot < 1 || slot > 16 || positions.putIfAbsent(slot, t) != null)
         return Map.of();
     }
-    return positions.size() == 16 ? positions : Map.of();
+    return positions.size() == 16 ? saveOfficialSlots(positions) : Map.of();
+  }
+
+  private Map<Integer, Team> saveOfficialSlots(Map<Integer, Team> resolved) {
+    for (Map.Entry<Integer, Team> entry : resolved.entrySet()) {
+      Team team = entry.getValue();
+      if (!entry.getKey().equals(team.getOfficialSlot())) {
+        team.setOfficialSlot(entry.getKey());
+        teams.save(team);
+      }
+    }
+    return resolved;
   }
 
   private boolean sameTeams(Matchup m, Long a, Long b) {

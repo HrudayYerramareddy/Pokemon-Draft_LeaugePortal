@@ -5,13 +5,13 @@ let seasonSelectedTeam = "all";
 function seasonMatchCard(m) {
   const score = m.played ? m.homeScore + " – " + m.awayScore : "vs";
   const status = m.revealed
-    ? '<div class="lineup-reveal"><div><h4>' + esc(m.homeTeam) + '</h4><div class="schedule-six-grid">' +
+    ? '<div class="lineup-reveal"><div><h4>' + teamBrand(m.homeTeamId) + '</h4><div class="schedule-six-grid">' +
         (m.homeLineup || []).map(p => simplePokemonCard(p)).join("") + '</div></div><div><h4>' +
-        esc(m.awayTeam) + '</h4><div class="schedule-six-grid">' +
+        teamBrand(m.awayTeamId) + '</h4><div class="schedule-six-grid">' +
         (m.awayLineup || []).map(p => simplePokemonCard(p)).join("") + '</div></div></div>'
     : '<p class="muted season-lineup-status">' +
-      (m.homeSubmitted ? "✓" : "○") + " " + esc(m.homeTeam) + " · " +
-      (m.awaySubmitted ? "✓" : "○") + " " + esc(m.awayTeam) +
+      (m.homeSubmitted ? "✓" : "○") + " " + teamBrand(m.homeTeamId) + " · " +
+      (m.awaySubmitted ? "✓" : "○") + " " + teamBrand(m.awayTeamId) +
       " — lineups hidden until both submit</p>";
   const tools = state.user.role === "MANAGER"
     ? `<div class="toolbar season-score-controls">
@@ -21,7 +21,7 @@ function seasonMatchCard(m) {
          ${m.played ? `<button class="secondary clear-result" data-id="${m.id}">Clear</button>` : ""}
        </div>` : "";
   return `<div class="season-match">
-    <div class="season-versus"><strong>${esc(m.homeTeam)}</strong><span>${score}</span><strong>${esc(m.awayTeam)}</strong></div>
+    <div class="season-versus"><strong>${teamBrand(m.homeTeamId)}</strong><span>${score}</span><strong>${teamBrand(m.awayTeamId)}</strong></div>
     ${status}${tools}</div>`;
 }
 
@@ -144,7 +144,7 @@ renderPlayoffs = async function () {
              </div>` : "";
         return `<div class="playoff-game ${game.ready ? "" : "awaiting"}">
           <div class="playoff-game-label">${esc(game.division)} · ${esc(game.round)}</div>
-          <div class="season-versus"><strong>${esc(game.homeTeam)}</strong><span>${score}</span><strong>${esc(game.awayTeam)}</strong></div>
+          <div class="season-versus"><strong>${teamBrand(game.homeTeam)}</strong><span>${score}</span><strong>${teamBrand(game.awayTeam)}</strong></div>
           ${inputs}
           ${game.ready ? "" : '<div class="muted small">Waiting for qualification or earlier round results</div>'}
         </div>`;
@@ -170,7 +170,7 @@ renderStandings = async function () {
     <div class="eyebrow">${esc(name)} Division</div><h2>${esc(name)} Standings</h2>
     <div class="standing-row standing-labels"><span>#</span><span>Team</span><span>W</span><span>L</span><span>Diff</span></div>
     ${teams.map((t,i) => `<div class="standing-row ${i < 4 ? `playoff-qualified playoff-seed-${i+1}` : ""} ${i === 3 ? "playoff-cutoff" : ""}">
-      <span class="standing-rank">${i+1}</span><span class="standing-team">${esc(t.name)}</span>
+      <span class="standing-rank">${i+1}</span><span class="standing-team">${teamBrand(t)}</span>
       <span>${t.wins}</span><span>${t.losses}</span><span>${t.differential >= 0 ? "+" : ""}${t.differential}</span></div>`).join("")}</section>`;
   $("#page-standings").innerHTML = `<div class="page-hero"><div><div class="eyebrow">Regular Season</div>
       <h1>Standings</h1><p class="muted">Wins → battle differential → head-to-head → team name. Top four qualify per division.</p></div></div>

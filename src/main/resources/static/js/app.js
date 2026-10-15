@@ -61,6 +61,7 @@ async function enterApp() {
   state.settings = dash.settings;
   $("#whoami").innerHTML =
     `<strong>${esc(state.user.username)}</strong><br>${esc(state.user.role)}${state.user.teamId ? ` · ${esc(teamName(state.user.teamId))}` : ""}`;
+  if (state.user.teamId) refreshTeamIdentity(state.teams.find(t => Number(t.id) === Number(state.user.teamId)));
   $("#manager-nav").classList.toggle("hidden", state.user.role !== "MANAGER");
   await showPage("home");
 }
