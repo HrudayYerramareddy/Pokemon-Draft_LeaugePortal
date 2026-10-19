@@ -50,6 +50,7 @@
         }
       }catch(e){list.textContent="Cannot load reminders: "+e.message;}
     }
+    window.refreshCommissionerReminders=update;
     panel.querySelector("#reminders-refresh").onclick=update;
     await update();
   };

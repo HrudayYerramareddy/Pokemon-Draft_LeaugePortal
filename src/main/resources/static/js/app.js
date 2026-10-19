@@ -367,6 +367,7 @@ async function renderManager() {
         },
       });
       toast("Settings saved");
+      window.refreshCommissionerReminders?.();
     } catch (e) {
       toast(e.message, true);
     }
