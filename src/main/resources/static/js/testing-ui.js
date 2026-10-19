@@ -19,12 +19,6 @@
         <p class="muted">Each week can be locked after every game has a recorded score. A locked week's scores cannot be changed or cleared, including via the API. Unlock it here to make corrections.</p>
         <div id="manager-week-locks" class="manager-week-list"><p class="muted">Loading weeks…</p></div>
       </div>
-      <div class="manager-season-section">
-        <h3>Test Roster Generator</h3>
-        <p class="muted">Only available when the draft has no picks and all team rosters are empty. It cannot overwrite an existing draft.</p>
-        <button id="fill-test-rosters" class="secondary" type="button" disabled>Fill Test Rosters</button>
-        <p id="fill-test-status" class="muted small"></p>
-      </div>
       <div class="manager-season-section manager-reset-section">
         <h3>Reset Entire League — Before the Draft</h3>
         <p>Deletes draft picks, roster ownership, trades, bids, transaction history, lineups,
@@ -58,7 +52,7 @@
           api("/api/manager/league-reset/preview")
         ]);
         previewReady = true;
-        resetButton.disabled = phrase.value !== "RESET ENTIRE LEAGUE";
+        resetButton.disabled = !phrase.value.trim();
         $tool("#league-reset-preview").innerHTML = `
           <span><strong>${preview.draftPicks}</strong> picks</span>
           <span><strong>${preview.rosterEntries}</strong> roster entries</span>
@@ -67,13 +61,6 @@
           <span><strong>${preview.transactions}</strong> transactions</span>
           <span><strong>${preview.weeklyLineups}</strong> lineups</span>
           <span><strong>${preview.playedGames}</strong> scored games</span>`;
-        const fill = $tool("#fill-test-rosters");
-        const canFill = preview.draftPicks === 0 && preview.rosterEntries === 0;
-        fill.disabled = !canFill;
-        $tool("#fill-test-status").textContent = canFill
-          ? "Available: there are no drafted picks or roster assignments."
-          : "Unavailable: a draft or roster already exists. Your current data is protected.";
-
         const lockedWeeks = [];
         for (let week = 1; week <= 16; week++) {
           const weekGames = games.filter(g => g.week === week);
@@ -114,19 +101,11 @@
       }
     }
 
-    $tool("#fill-test-rosters").onclick = async () => {
-      if (!confirm("Fill 16 EMPTY rosters with test Pokémon? This is unavailable once any draft picks exist.")) return;
-      const button = $tool("#fill-test-rosters");
-      button.disabled = true;
-      try {
-        const result = await api("/api/manager/testing/fill-rosters", {method:"POST"});
-        toast(`Filled ${result.teams} test teams with ${result.pokemonAssigned} Pokémon`);
-        await loadData();
-      } catch (error) { toast(error.message,true); await loadData(); }
-    };
-
     resetButton.onclick = async () => {
-      if (phrase.value !== "RESET ENTIRE LEAGUE" || !previewReady) return;
+      if (!phrase.value.trim() || !previewReady) {
+        toast("Enter the league reset password first.", true);
+        return;
+      }
       if (!confirm("ARE YOU SURE? This permanently resets every draft pick, roster, bid, trade, lineup, recorded score, and transaction. All Pokémon become available again. Team identities, logos, divisions, Pokémon prices and published fixtures stay unchanged. Continue?")) return;
       if (!confirm("FINAL CONFIRMATION: Reset the live Neon league to its PRE-DRAFT state now? This cannot be undone without a database backup.")) return;
       resetButton.disabled = true;
@@ -139,6 +118,7 @@
         await refreshBase();
         await renderManager();
       } catch (error) { toast(error.message,true); resetButton.disabled = false; }
+      finally { phrase.value = ""; resetButton.disabled = true; }
     };
     await loadData();
   }
