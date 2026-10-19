@@ -15,6 +15,12 @@
         <p class="muted">Finalize completed weeks or reset to a fresh, pre-draft league.</p>
       </div></div>
       <div class="manager-season-section">
+        <h3>Fill All Rosters — Testing Only</h3>
+        <p class="muted">Temporarily generate 10 Pokémon for each of the 16 teams (within $100 per team). Only works when every roster and draft pick is empty. This changes league data; it does not reset existing rosters.</p>
+        <button id="fill-test-rosters" type="button" class="secondary">Fill All Rosters</button>
+        <p id="fill-test-rosters-status" class="muted small" role="status"></p>
+      </div>
+      <div class="manager-season-section">
         <h3>Lock Weekly Results</h3>
         <p class="muted">Each week can be locked after every game has a recorded score. A locked week's scores cannot be changed or cleared, including via the API. Unlock it here to make corrections.</p>
         <div id="manager-week-locks" class="manager-week-list"><p class="muted">Loading weeks…</p></div>
@@ -37,6 +43,22 @@
     page.prepend(section);
 
     const $tool = selector => section.querySelector(selector);
+    const fillButton = $tool("#fill-test-rosters");
+    fillButton.onclick = async () => {
+      if (!confirm("TEST SETUP: Fill all 16 empty rosters with 10 Pokémon each? This writes draft testing data to the current league. Existing rosters will not be overwritten. Continue?")) return;
+      fillButton.disabled = true;
+      try {
+        const result = await api("/api/manager/testing/fill-rosters", { method: "POST" });
+        $tool("#fill-test-rosters-status").textContent =
+          `Filled ${result.teams} rosters with ${result.pokemonAssigned} Pokémon. Maximum roster value: ${result.highestRosterValue}.`;
+        toast("Test rosters filled successfully");
+        await refreshBase();
+        await loadData();
+      } catch (error) {
+        $tool("#fill-test-rosters-status").textContent = error.message;
+        toast(error.message, true);
+      } finally { fillButton.disabled = false; }
+    };
     const phrase = $tool("#league-reset-phrase");
     const resetButton = $tool("#reset-league-now");
     let previewReady = false;
