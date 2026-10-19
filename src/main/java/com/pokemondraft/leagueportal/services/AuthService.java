@@ -21,13 +21,19 @@ public class AuthService {
 
   @Transactional
   public AppUser login(String username, String password, HttpSession session) {
+    if (username == null || username.isBlank())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter your username.");
+    if (password == null || password.isEmpty())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Enter your password.");
     AppUser user =
         users
-            .findByUsername(username)
+            .findByUsername(username.trim())
             .orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login"));
-    if (password == null || !matches(password, user.getPassword()))
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid login");
+                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Username not found. Check the spelling and try again."));
+    if (!matches(password, user.getPassword()))
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+          "Incorrect password. Try again or ask the commissioner for a password reset.");
     if (!isHashed(user.getPassword())) {
       user.setPassword(encoder.encode(password));
       users.save(user);

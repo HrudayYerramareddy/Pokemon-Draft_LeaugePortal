@@ -117,4 +117,38 @@ class FreeAgencyServiceTest {
         service::processBids).getStatusCode());
   }
 
+  @Test void closedWaiversExplainTheActualLeagueWeek() {
+    config.setCurrentWeek(2);
+    ResponseStatusException error = assertThrows(ResponseStatusException.class,
+        () -> service.submitBid(1L, 99L, 10L, 1));
+    assertTrue(error.getReason().contains("Week 4"));
+    assertTrue(error.getReason().contains("Week 2"));
+    config.setCurrentWeek(5);
+    assertTrue(service.waiverClosedReason().contains("Week 5"));
+  }
+
+  @Test void freeAgencyExplainsIncompleteWeekThreeResults() {
+    when(matchups.findByWeekOrderByIdAsc(3)).thenReturn(List.of(new Matchup(3,1L,2L)));
+    assertTrue(service.waiverClosedReason().contains("0/8 complete"));
+    assertTrue(assertThrows(ResponseStatusException.class,
+        () -> service.submitBid(1L,99L,10L,1)).getReason().contains("Week 3"));
+  }
+
+  @Test void overPriceBidExplainsBothPokemonValues() {
+    when(pokemon.findById(96L)).thenReturn(Optional.of(new Pokemon("Aegislash", 8)));
+    ResponseStatusException error = assertThrows(ResponseStatusException.class,
+        () -> service.submitBid(1L,96L,10L,1));
+    assertTrue(error.getReason().contains("Aegislash"));
+    assertTrue(error.getReason().contains("$8"));
+    assertTrue(error.getReason().contains("$5"));
+  }
+
+  @Test void pendingBidLimitExplainsTheRemainingFaab() {
+    when(bids.findByStatus(BidStatus.PENDING))
+        .thenReturn(List.of(new FreeAgentBid(1L,97L,11L,2)));
+    ResponseStatusException error = assertThrows(ResponseStatusException.class,
+        () -> service.submitBid(1L,99L,10L,2));
+    assertTrue(error.getReason().contains("$1 FAAB available"));
+  }
+
 }

@@ -51,40 +51,62 @@ public class FreeAgencyService {
     return third.size() == 8 && third.stream().allMatch(Matchup::isPlayed);
   }
 
+  /** Specific eligibility reason shown to coaches and used for bid errors. */
+  public String waiverClosedReason() {
+    LeagueSettings league = settings.findById(1L).orElseGet(LeagueSettings::new);
+    int week = league.getCurrentWeek();
+    if (week < 4)
+      return "Free agency opens in Week 4. The commissioner has the league set to Week " + week + ".";
+    if (week > 4)
+      return "Free agency is only available in Week 4. The league is currently in Week " + week + ".";
+    if (league.isWaiverProcessed() || waiverPeriodsProcessed() >= 2)
+      return "Both Week 4 waiver periods have already been processed. Free agency is closed.";
+    List<Matchup> third = matchups.findByWeekOrderByIdAsc(3);
+    long completed = third.stream().filter(Matchup::isPlayed).count();
+    if (third.size() != 8 || completed != 8)
+      return "All 8 Week 3 game results must be recorded before Week 4 free agency opens ("
+          + completed + "/8 complete).";
+    return null;
+  }
+
   private void requireWindow() {
-    if (!isWaiverWindowOpen())
-      throw bad("Waivers run during Week 4 after all Week 3 results, in two processing periods");
+    String reason = waiverClosedReason();
+    if (reason != null) throw bad(reason);
   }
 
   @Transactional
   public FreeAgentBid submitBid(Long teamId, Long wanted, Long drop, int amount) {
     requireWindow();
     Team t = teams.findById(teamId).orElseThrow();
-    if (t.getFaBudget() <= 0) throw bad("You have no FAAB remaining");
+    if (t.getFaBudget() <= 0) throw bad("You have $0 FAAB remaining. You cannot submit another bid.");
     if (amount <= 0 || amount > 3 || amount > t.getFaBudget())
-      throw bad("Bid must be between $1 and your remaining FAAB");
+      throw bad("Enter a whole-dollar bid between $1 and $" + Math.min(3, t.getFaBudget()) + ".");
     List<FreeAgentBid> pending = bids.findByStatus(BidStatus.PENDING).stream()
         .filter(b -> b.getTeamId().equals(teamId)).toList();
-    if (pending.size() >= 3 || pending.stream().mapToInt(FreeAgentBid::getAmount).sum() + amount > Math.min(3, t.getFaBudget()))
-      throw bad("Combined pending bids cannot exceed $3");
+    if (pending.size() >= 3)
+      throw bad("You already have 3 pending FAAB bids, the maximum allowed.");
+    int reserved = pending.stream().mapToInt(FreeAgentBid::getAmount).sum();
+    int available = Math.min(3, t.getFaBudget()) - reserved;
+    if (amount > available)
+      throw bad("You have $" + available + " FAAB available after pending bids. Reduce your bid.");
     if (pending.stream().anyMatch(b -> Objects.equals(b.getWantedPokemonId(), wanted)))
-      throw bad("Already bidding on this Pokemon");
+      throw bad("You already have a pending bid for this Pokémon. Choose another free agent.");
     if (pending.stream().anyMatch(b -> Objects.equals(b.getDropPokemonId(), drop)))
-      throw bad("Choose a different drop for each bid");
-    if (wanted == null) throw bad("Choose a free agent");
-    Pokemon w = pokemon.findById(wanted).orElseThrow(() -> bad("Free agent does not exist"));
+      throw bad("This Pokémon is already selected as the drop in another pending bid.");
+    if (wanted == null) throw bad("Choose the free-agent Pokémon you want to acquire.");
+    Pokemon w = pokemon.findById(wanted).orElseThrow(() -> bad("This free agent no longer exists. Refresh the list."));
     if (roster.findByPokemonId(wanted).isPresent() || w.isDrafted())
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Wanted Pokemon is not a free agent");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, w.getName() + " is already owned by a team and is not available as a free agent.");
     int count = (int) roster.countByTeamId(teamId);
-    if (count != ROSTER_LIMIT) throw bad("Free agency requires a complete 10-Pokemon roster");
+    if (count != ROSTER_LIMIT) throw bad("Your roster has " + count + "/10 Pokémon. You need exactly 10 to submit a FAAB bid.");
     if (drop == null)
-      throw bad("Choose one Pokemon to drop. Rosters must stay at exactly 10 Pokemon");
+      throw bad("Choose a Pokémon from your roster to drop if your bid wins.");
     RosterEntry d = verifyOwner(teamId, drop);
     Pokemon dp = pokemon.findById(d.getPokemonId()).orElseThrow();
     if (w.getPrice() > dp.getPrice())
-      throw bad("Free agent must cost no more than the Pokemon being dropped");
+      throw bad(w.getName() + " costs $" + w.getPrice() + ", but " + dp.getName() + " costs $" + dp.getPrice() + ". The free agent cannot cost more than your drop.");
     int value = rosterValue(teamId) - dp.getPrice() + w.getPrice();
-    if (value > ROSTER_BUDGET) throw bad("Move would put roster value at $" + value + "/$100");
+    if (value > ROSTER_BUDGET) throw bad("This swap would put your roster at $" + value + "/$100. The cap is $100.");
     return bids.save(new FreeAgentBid(teamId, wanted, drop, amount));
   }
 
@@ -172,8 +194,8 @@ public class FreeAgencyService {
     Pokemon dp = pokemon.findById(b.getDropPokemonId()).orElseThrow();
     RosterEntry de = verifyOwner(t.getId(), dp.getId());
     int value = rosterValue(t.getId()) - dp.getPrice() + w.getPrice();
-    if (w.getPrice() > dp.getPrice()) throw bad("Pickup cannot cost more than drop");
-    if (value > ROSTER_BUDGET) throw bad("Winning bid exceeds $100 roster budget");
+    if (w.getPrice() > dp.getPrice()) throw bad(w.getName() + " ($" + w.getPrice() + ") costs more than " + dp.getName() + " ($" + dp.getPrice() + ").");
+    if (value > ROSTER_BUDGET) throw bad("This winning bid would exceed the $100 roster cap (new total: $" + value + ").");
     roster.delete(de);
     dp.setDrafted(false);
     pokemon.save(dp);
@@ -206,13 +228,13 @@ public class FreeAgencyService {
       List<Long> requested,
       int proposerFaab,
       int recipientFaab) {
-    if (recipient == null) throw bad("Choose a team to trade with");
-    if (teamId.equals(recipient)) throw bad("You cannot trade with your own team");
+    if (recipient == null) throw bad("Choose the team you want to trade with.");
+    if (teamId.equals(recipient)) throw bad("You cannot trade with your own team. Choose another coach.");
     offered = clean(offered);
     requested = clean(requested);
     if (offered.isEmpty() && requested.isEmpty() && proposerFaab == 0 && recipientFaab == 0)
-      throw bad("Trade must include at least one Pokemon or FAAB");
-    if (proposerFaab < 0 || recipientFaab < 0) throw bad("FAAB cannot be negative");
+      throw bad("A trade offer must include at least one Pokémon or some FAAB.");
+    if (proposerFaab < 0 || recipientFaab < 0) throw bad("Trade FAAB amounts cannot be negative.");
     Team p = teams.findById(teamId).orElseThrow(), r = teams.findById(recipient).orElseThrow();
     if (proposerFaab > p.getFaBudget())
       throw bad(
@@ -408,10 +430,10 @@ public class FreeAgencyService {
     RosterEntry e =
         roster
             .findByPokemonId(pokemonId)
-            .orElseThrow(() -> bad(pokemonName(pokemonId) + " is not currently rostered"));
+            .orElseThrow(() -> bad(pokemonName(pokemonId) + " is no longer rostered. Refresh and try again."));
     if (!e.getTeamId().equals(teamId))
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, pokemonName(pokemonId) + " belongs to another team");
+          HttpStatus.FORBIDDEN, pokemonName(pokemonId) + " belongs to another team. You can only drop or trade Pokémon you own.");
     return e;
   }
 

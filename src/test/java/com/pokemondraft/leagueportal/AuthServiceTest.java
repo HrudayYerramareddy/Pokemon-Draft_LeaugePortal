@@ -79,4 +79,18 @@ class AuthServiceTest {
     assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(ResponseStatusException.class,
         () -> auth.changePassword(session, "password", "newPassword123")).getStatusCode());
   }
+  @Test void loginExplainsMissingUsernameAndIncorrectPasswordWithoutCreatingSession() {
+    ResponseStatusException missing = assertThrows(ResponseStatusException.class,
+        () -> auth.login("not-a-coach", "password", session));
+    assertTrue(missing.getReason().contains("Username not found"));
+    ResponseStatusException wrong = assertThrows(ResponseStatusException.class,
+        () -> auth.login("coach1", "wrong", session));
+    assertTrue(wrong.getReason().contains("Incorrect password"));
+    assertTrue(assertThrows(ResponseStatusException.class,
+        () -> auth.login("", "password", session)).getReason().contains("username"));
+    assertTrue(assertThrows(ResponseStatusException.class,
+        () -> auth.login("coach1", "", session)).getReason().contains("password"));
+    assertNull(session.getAttribute(AuthService.SESSION_USER_ID));
+  }
+
 }

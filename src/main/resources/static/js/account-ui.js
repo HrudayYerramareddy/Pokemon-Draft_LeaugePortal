@@ -95,7 +95,7 @@ async function renderAccount() {
         body.append("file", file);
         const response = await fetch("/api/teams/me/logo", {method:"POST", body});
         const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || result.message || "Upload failed");
+        if (!response.ok) throw new Error(apiErrorMessage(response.status, result));
         refreshTeamIdentity(result);
         toast("Team logo uploaded");
         await renderAccount();

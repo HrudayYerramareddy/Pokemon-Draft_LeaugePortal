@@ -66,19 +66,38 @@ async function enterApp() {
   await showPage("home");
 }
 
+// Keep login errors alongside the fields instead of a vanishing toast.
+const loginFeedback = document.createElement("p");
+loginFeedback.id = "login-feedback";
+loginFeedback.className = "form-error hidden";
+loginFeedback.setAttribute("role", "alert");
+$("#login-button").insertAdjacentElement("beforebegin", loginFeedback);
 $("#login-button").addEventListener("click", async () => {
+  const button = $("#login-button");
+  const username = $("#login-username").value.trim();
+  const password = $("#login-password").value;
+  loginFeedback.classList.add("hidden");
+  if (!username || !password) {
+    loginFeedback.textContent = !username ? "Enter your username." : "Enter your password.";
+    loginFeedback.classList.remove("hidden");
+    return;
+  }
+  button.disabled = true;
   try {
     state.user = await api("/api/auth/login", {
       method: "POST",
-      body: {
-        username: $("#login-username").value,
-        password: $("#login-password").value,
-      },
+      body: { username, password },
     });
     await enterApp();
-  } catch (e) {
-    toast(e.message, true);
+  } catch (error) {
+    loginFeedback.textContent = error.message;
+    loginFeedback.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
   }
+});
+["#login-username", "#login-password"].forEach(id => {
+  $(id).addEventListener("input", () => loginFeedback.classList.add("hidden"));
 });
 $("#login-password").addEventListener("keydown", (e) => {
   if (e.key === "Enter") $("#login-button").click();

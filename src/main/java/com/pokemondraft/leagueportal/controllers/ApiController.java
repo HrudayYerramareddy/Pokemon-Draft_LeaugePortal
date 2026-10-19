@@ -124,7 +124,7 @@ public class ApiController {
   public Pokemon price(@PathVariable Long id, @RequestBody PriceUpdate r, HttpSession session) {
     auth.manager(session);
     if (r.price() < 0 || r.price() > 20)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Price must be $0-$20");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pokémon draft prices must be between $0 and $20.");
     Pokemon p = pokemon.findById(id).orElseThrow();
     p.setPrice(r.price());
     return pokemon.save(p);
@@ -219,7 +219,7 @@ public class ApiController {
   public Map<String, Object> lineup(HttpSession session) {
     AppUser u = auth.current(session);
     if (u.getRole() == Role.MANAGER)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no team lineup");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Commissioners do not have a team lineup. Sign in as a coach to submit one.");
     LeagueSettings s = settings();
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("week", s.getCurrentWeek());
@@ -242,21 +242,21 @@ public class ApiController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no team lineup");
     LeagueSettings s = settings();
     if (!SeasonCalendar.week(s.getCurrentWeek()).lineupRequired())
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineups are submitted during this week");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineups can be submitted in Week " + s.getCurrentWeek() + ".");
     if (matchups.findByWeekOrderByIdAsc(s.getCurrentWeek()).stream().noneMatch(m ->
         u.getTeamId().equals(m.getHomeTeamId()) || u.getTeamId().equals(m.getAwayTeamId())))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No scheduled match for this team");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Your team has no scheduled matchup in Week " + s.getCurrentWeek() + ".");
     if (s.getLineupDeadline() != null && LocalDateTime.now().isAfter(s.getLineupDeadline()))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lineup deadline has passed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The Week " + s.getCurrentWeek() + " lineup deadline has passed.");
     if (r.pokemonIds() == null || new HashSet<>(r.pokemonIds()).size() != 6)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 unique Pokemon");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 different Pokémon from your roster.");
     Set<Long> mine =
         roster.findByTeamId(u.getTeamId()).stream()
             .map(RosterEntry::getPokemonId)
             .collect(Collectors.toSet());
     if (!mine.containsAll(r.pokemonIds()))
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Lineup contains a Pokemon not on your roster");
+          HttpStatus.FORBIDDEN, "One or more selected Pokémon are not on your roster. Refresh and choose again.");
     String csv = r.pokemonIds().stream().map(String::valueOf).collect(Collectors.joining(","));
     WeeklySubmission ws =
         submissions
@@ -289,7 +289,7 @@ public class ApiController {
   public FreeAgentBid bid(@RequestBody BidRequest r, HttpSession session) {
     AppUser u = auth.current(session);
     if (u.getRole() == Role.MANAGER)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager cannot bid");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Commissioners cannot submit FAAB bids. Sign in as a coach to make a bid.");
     return freeAgency.submitBid(u.getTeamId(), r.wantedPokemonId(), r.dropPokemonId(), r.amount());
   }
 
@@ -350,7 +350,7 @@ public class ApiController {
     if (r.leagueName() != null) s.setLeagueName(r.leagueName());
     if (r.currentWeek() != null) {
       if (r.currentWeek() < 1 || r.currentWeek() > SeasonCalendar.FINAL_WEEK)
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Week must be 1–16");
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a week between 1 and 16.");
       s.setCurrentWeek(r.currentWeek());
     }
     if (r.regularSeasonWeeks() != null && r.regularSeasonWeeks() != SeasonCalendar.REGULAR_SEASON_END)
@@ -381,6 +381,7 @@ public class ApiController {
     m.put("playoffSeedModeEnabled", s.isPlayoffSeedModeEnabled());
     m.put("waiverProcessed", s.isWaiverProcessed());
     m.put("waiverWindowOpen", freeAgency.isWaiverWindowOpen());
+    m.put("waiverClosedReason", freeAgency.waiverClosedReason());
     m.put("waiverPeriodsProcessed", freeAgency.waiverPeriodsProcessed());
     return m;
   }

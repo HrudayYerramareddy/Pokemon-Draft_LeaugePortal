@@ -78,33 +78,48 @@
     $("#fa-content").innerHTML =
       `<div class="card"><h2>Submit Blind FAAB Bid</h2>
       <p>FAAB available to bid: <strong>${budget}/$3</strong> · Roster: <strong>${myRoster.length}/10</strong></p>
-      <p class="muted">One waiver run after Week 3, before Week 4. Each bid is $1–$3; combined bids cannot exceed $3. Every team must keep exactly 10 Pokémon. Choose the free agent you want, your bid amount, and the Pokémon that will be dropped only if you win.</p>
+      <p class="muted">Two waiver periods in Week 4 after all Week 3 results. Each bid is $1–$3; combined pending bids cannot exceed available FAAB. Teams must have exactly 10 Pokémon, and the free agent cannot cost more than the Pokémon dropped.</p>
       <div class="toolbar">
         <label>Free agent<select id="bid-wanted"><option value="">Choose free agent</option>${free.map((p) => `<option value="${p.id}">${esc(p.name)} — $${p.price}</option>`).join("")}</select></label>
         <label>Drop if bid wins<select id="bid-drop"><option value="">Choose Pokemon to drop</option>${myRoster.map((p) => `<option value="${p.pokemonId}">${esc(p.name)} — $${p.price}</option>`).join("")}</select></label>
         <label>FAAB bid<input id="bid-amount" type="number" min="1" max="${budget}" value="${budget > 0 ? 1 : 0}" placeholder="1"></label>
         <button id="submit-bid" class="primary" ${!open || pendingBids.length >= 3 || budget <= 0 || free.length === 0 || !complete ? "disabled" : ""}>Submit Blind Bid</button>
       </div>
-      ${!open ? '<p class="small muted">Waivers are closed until after Week 3, or have already finished.</p>' : ""}
-      ${!complete ? '<p class="small muted">Free agency is unavailable until this team has exactly 10 Pokémon.</p>' : ""}<p id="bid-preview" class="small muted"></p></div>${bidTable(list)}`;
+      <p id="bid-preview" class="small muted" role="status" aria-live="polite"></p>
+      <p id="bid-error" class="form-error hidden" role="alert"></p></div>${bidTable(list)}`;
 
     const preview = () => {
-      const wanted = free.find((p) => p.id === Number($("#bid-wanted").value));
-      const drop = myRoster.find(
-        (p) => p.pokemonId === Number($("#bid-drop").value),
-      );
-      if (!wanted) {
-        $("#bid-preview").textContent =
-          "Choose a free agent to preview the move.";
-        return;
-      }
+      const wanted = free.find(p => p.id === Number($("#bid-wanted").value));
+      const drop = myRoster.find(p => p.pokemonId === Number($("#bid-drop").value));
+      const amount = Number($("#bid-amount").value);
       const current = myRoster.reduce((sum, p) => sum + (p.price || 0), 0);
-      const after = current - (drop?.price || 0) + (wanted.price || 0);
-      $("#bid-preview").textContent =
-        `Roster value if won: $${after}/$100${drop ? ` · ${drop.name} is dropped only if this bid wins.` : " · choose a Pokémon to drop."}`;
+      const after = current - (drop?.price || 0) + (wanted?.price || 0);
+      let reason = "";
+      if (!open) reason = state.settings?.waiverClosedReason ||
+        "Week 4 waivers are currently closed.";
+      else if (!complete) reason = `Your roster has ${myRoster.length}/10 Pokémon. You need exactly 10 to bid.`;
+      else if (pendingBids.length >= 3) reason = "You already have the maximum of 3 pending bids.";
+      else if (budget <= 0) reason = "You have no available FAAB after existing bids.";
+      else if (!free.length) reason = "No free agents are currently available.";
+      else if (!wanted) reason = "Choose the free agent you want to acquire.";
+      else if (!drop) reason = "Choose a Pokémon from your roster to drop if the bid wins.";
+      else if (pendingBids.some(b => Number(b.wantedPokemonId) === wanted.id))
+        reason = `You already have a pending bid for ${wanted.name}.`;
+      else if (pendingBids.some(b => Number(b.dropPokemonId) === drop.pokemonId))
+        reason = `${drop.name} is already selected as the drop in another pending bid.`;
+      else if (wanted.price > drop.price)
+        reason = `${wanted.name} costs $${wanted.price}, but ${drop.name} costs $${drop.price}. The free agent cannot cost more than your drop.`;
+      else if (after > 100) reason = `This move would put your roster at $${after}/$100.`;
+      else if (!Number.isInteger(amount) || amount < 1 || amount > budget)
+        reason = `Enter a whole-dollar bid between $1 and $${budget}.`;
+      $("#submit-bid").disabled = !!reason;
+      $("#bid-preview").textContent = reason ||
+        `Valid bid: ${wanted.name} ($${wanted.price}) for ${drop.name} ($${drop.price}). Roster if won: $${after}/$100.`;
+      $("#bid-preview").classList.toggle("budget-error", !!reason);
     };
     $("#bid-wanted").addEventListener("change", preview);
     $("#bid-drop").addEventListener("change", preview);
+    $("#bid-amount").addEventListener("input", preview);
     preview();
     $("#submit-bid").addEventListener("click", async () => {
       const wanted = Number($("#bid-wanted").value),
@@ -120,6 +135,7 @@
       if (!drop) return toast("Choose who to drop if you win", true);
       if (!Number.isInteger(amount) || amount < 1 || amount > budget)
         return toast(`Bid must be between $1 and $${budget}`, true);
+      $("#bid-error").classList.add("hidden");
       try {
         await api("/api/free-agency/bids", {
           method: "POST",
@@ -128,6 +144,8 @@
         toast("Blind bid submitted");
         await renderBids();
       } catch (e) {
+        $("#bid-error").textContent = e.message;
+        $("#bid-error").classList.remove("hidden");
         toast(e.message, true);
       }
     });

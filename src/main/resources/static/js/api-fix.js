@@ -16,13 +16,15 @@ function apiErrorMessage(status, data) {
   if (
     typeof data === "string" &&
     data.trim() &&
-    !/^bad request$/i.test(data.trim())
+    !/^bad request$/i.test(data.trim()) &&
+    !data.trim().startsWith("<") &&
+    data.length < 400
   )
     return data.trim();
   if (data && typeof data === "object") {
     const candidates = [
-      data.detail,
       data.message,
+      data.detail,
       data.reason,
       data.description,
     ];

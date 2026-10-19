@@ -33,7 +33,7 @@ public class DraftService {
     List<Team> order = teams.findAll();
     order.sort(Comparator.comparingInt(Team::getDraftPosition));
     if (order.size() != 16)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Draft requires 16 teams");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The draft cannot start until the commissioner has configured all 16 teams.");
     long count = picks.count();
     if (count >= 160) return null;
     int round = (int) (count / 16);
@@ -47,17 +47,20 @@ public class DraftService {
   public DraftPick pick(Long actingTeamId, boolean manager, Long pokemonId) {
     LeagueSettings s = settings.findById(1L).orElseGet(LeagueSettings::new);
     if (!s.isDraftOpen())
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Draft is closed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The commissioner has closed the draft. You cannot make picks right now.");
     Team current = currentTeam();
     if (current == null)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Draft is complete");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "All 160 draft picks are complete. No more Pokémon can be selected.");
     if (!manager && !current.getId().equals(actingTeamId))
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "It is not your turn");
-    Pokemon p = pokemon.findById(pokemonId).orElseThrow();
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "It is " + current.getName() + "\'s turn to draft. Wait for your team to be on the clock.");
+    if (pokemonId == null)
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Choose a Pokémon before drafting.");
+    Pokemon p = pokemon.findById(pokemonId).orElseThrow(() ->
+        new ResponseStatusException(HttpStatus.NOT_FOUND, "That Pokémon is no longer in the draft pool."));
     if (p.isDrafted() || roster.findByPokemonId(pokemonId).isPresent())
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Pokemon already drafted");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, p.getName() + " has already been drafted. Select an available Pokémon.");
     if (roster.countByTeamId(current.getId()) >= 10)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Roster already has 10 Pokemon");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, current.getName() + " already has 10 Pokémon and cannot draft another.");
     int overall = (int) picks.count() + 1;
     int round = (overall - 1) / 16 + 1;
     p.setDrafted(true);

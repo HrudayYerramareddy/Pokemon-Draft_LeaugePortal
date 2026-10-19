@@ -36,25 +36,25 @@ public class WeeklyLineupService {
     LeagueSettings s = settings.findById(1L).orElseThrow();
     int week = s.getCurrentWeek();
     if (!SeasonCalendar.week(week).lineupRequired())
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineup submissions during this week");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There are no lineup submissions in Week " + week + ". Choose a scheduled game week.");
     finalizeExpired(week);
     if (s.getLineupDeadline() != null && !LocalDateTime.now().isBefore(s.getLineupDeadline()))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Lineup deadline has passed");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The Week " + week + " lineup deadline has passed. Your lineup can no longer be changed.");
     if (ids == null || ids.size() != 6 || new HashSet<>(ids).size() != 6)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 unique Pokemon");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 different Pokémon from your roster.");
     Matchup m = matchupFor(teamId, week);
     Long opponent = m.getHomeTeamId().equals(teamId) ? m.getAwayTeamId() : m.getHomeTeamId();
     if (submissions.findByTeamIdAndWeek(opponent, week).isPresent()
         && submissions.findByTeamIdAndWeek(teamId, week).isPresent())
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Both teams submitted; this matchup is locked");
+          HttpStatus.BAD_REQUEST, "Both coaches have submitted their Week " + week + " lineups. This matchup is locked.");
     Set<Long> mine =
         roster.findByTeamId(teamId).stream()
             .map(RosterEntry::getPokemonId)
             .collect(Collectors.toSet());
     if (!mine.containsAll(ids))
       throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "Lineup contains a Pokemon not on your roster");
+          HttpStatus.FORBIDDEN, "At least one selected Pokémon is no longer on your team. Refresh your roster and choose again.");
     String csv = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
     WeeklySubmission ws =
         submissions
@@ -87,7 +87,7 @@ public class WeeklyLineupService {
     List<RosterEntry> entries = new ArrayList<>(roster.findByTeamId(teamId));
     if (entries.size() < 6)
       throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "Team " + teamId + " has fewer than 6 Pokemon");
+          HttpStatus.BAD_REQUEST, "Team " + teamId + " has fewer than 6 Pokémon and cannot be assigned an automatic lineup");
     Collections.shuffle(entries, new Random(Objects.hash(teamId, week, 2026)));
     String csv =
         entries.stream()
@@ -173,7 +173,7 @@ public class WeeklyLineupService {
         .orElseThrow(
             () ->
                 new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "No matchup for this team this week"));
+                    HttpStatus.BAD_REQUEST, "Your team has no scheduled matchup in Week " + week));
   }
 
   private List<Map<String, Object>> names(WeeklySubmission s) {
