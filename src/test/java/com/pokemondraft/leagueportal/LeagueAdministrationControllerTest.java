@@ -15,16 +15,16 @@ class LeagueAdministrationControllerTest {
   AuthService auth = mock(AuthService.class);
   TestRosterService resets = mock(TestRosterService.class);
   WeekLockService locks = mock(WeekLockService.class);
-  LeagueAdministrationController controller = new LeagueAdministrationController(auth,resets,locks);
+  LeagueAdministrationController controller = new LeagueAdministrationController(auth,resets,locks,"test-secret");
   MockHttpSession session = new MockHttpSession();
 
-  @Test void resetRequiresExactExplicitPhraseAndManager() {
-    assertEquals(HttpStatus.BAD_REQUEST,
+  @Test void resetRequiresPrivatePasswordAndManager() {
+    assertEquals(HttpStatus.FORBIDDEN,
         assertThrows(ResponseStatusException.class, () ->
-            controller.reset(new LeagueAdministrationController.ResetRequest("CLEAR ALL ROSTERS"),session))
+            controller.reset(new LeagueAdministrationController.ResetRequest("wrong"),session))
             .getStatusCode());
     verify(resets,never()).resetLeague();
-    controller.reset(new LeagueAdministrationController.ResetRequest("RESET ENTIRE LEAGUE"),session);
+    controller.reset(new LeagueAdministrationController.ResetRequest("test-secret"),session);
     verify(resets).resetLeague();
     verify(auth,times(2)).manager(session);
   }
