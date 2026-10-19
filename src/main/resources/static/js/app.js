@@ -54,7 +54,6 @@ async function boot() {
 }
 async function enterApp() {
   $("#login-screen").classList.add("hidden");
-  $("#app").classList.remove("hidden");
   const dash = await api("/api/dashboard");
   state.user = dash.user;
   state.teams = dash.teams;
@@ -64,6 +63,8 @@ async function enterApp() {
   if (state.user.teamId) refreshTeamIdentity(state.teams.find(t => Number(t.id) === Number(state.user.teamId)));
   $("#manager-nav").classList.toggle("hidden", state.user.role !== "MANAGER");
   document.querySelector('[data-page="freeagency"]')?.classList.toggle("hidden", state.user.role === "MANAGER");
+  // Apply role-based navigation before allowing the app to become visible.
+  $("#app").classList.remove("hidden");
   await showPage("home");
 }
 
