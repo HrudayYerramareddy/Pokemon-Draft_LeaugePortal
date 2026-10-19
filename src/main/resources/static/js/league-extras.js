@@ -77,10 +77,6 @@
 
   async function checkNotices() {
     if (!state.user || document.hidden) return;
-    if (state.user.role !== "COACH") {
-      noticeCache = []; renderNotices();
-      return;
-    }
     try {
       const next = await api("/api/notifications");
       if (!Array.isArray(next)) return;

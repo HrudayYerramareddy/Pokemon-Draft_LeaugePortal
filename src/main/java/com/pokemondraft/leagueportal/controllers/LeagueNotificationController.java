@@ -24,14 +24,17 @@ public class LeagueNotificationController {
   private final FreeAgentBidRepository bids;
   private final PokemonRepository pokemon;
   private final TeamRepository teams;
+  private final CommissionerReminderController commissionerReminders;
 
   public LeagueNotificationController(AuthService auth, DraftService draft,
       DraftPickRepository picks, LeagueSettingsRepository settings,
       WeeklySubmissionRepository submissions, MatchupRepository matchups,
-      FreeAgentBidRepository bids, PokemonRepository pokemon, TeamRepository teams) {
+      FreeAgentBidRepository bids, PokemonRepository pokemon, TeamRepository teams,
+      CommissionerReminderController commissionerReminders) {
     this.auth=auth; this.draft=draft; this.picks=picks; this.settings=settings;
     this.submissions=submissions; this.matchups=matchups; this.bids=bids;
     this.pokemon=pokemon; this.teams=teams;
+    this.commissionerReminders=commissionerReminders;
   }
 
   public record Notice(String id, String title, String message, String page) {}
@@ -39,6 +42,10 @@ public class LeagueNotificationController {
   @GetMapping
   public List<Notice> myNotifications(HttpSession session) {
     AppUser user=auth.current(session);
+    if (user.getRole()==Role.MANAGER) {
+      return commissionerReminders.remindersAt(LocalDate.now(ZoneId.of("America/New_York")))
+          .stream().map(n -> new Notice(n.id(),n.title(),n.message(),"manager")).toList();
+    }
     if (user.getRole()!=Role.COACH || user.getTeamId()==null) return List.of();
     Long teamId=user.getTeamId();
     LeagueSettings league=settings.findById(1L).orElseGet(LeagueSettings::new);

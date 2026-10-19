@@ -20,3 +20,5 @@
 .season-locked-note {margin:12px 0 0;color:#abcde8;font-size:12px;}
 @media(max-width:600px){ .manager-week-list {grid-template-columns:1fr 1fr;} .manager-reset-section {padding:12px;} }
 @media(max-width:400px){ .manager-week-list {grid-template-columns:1fr;} }
+
+.manager-reminders{grid-column:1/-1}.manager-reminder-item{border:1px solid rgba(125,194,247,.24);border-radius:12px;padding:14px;margin-top:11px;background:rgba(20,55,96,.2);display:flex;align-items:center;flex-wrap:wrap;gap:10px}.manager-reminder-item strong{flex:1 1 100%;font-size:15px}.manager-reminder-item p{flex:1 1 230px;margin:0;line-height:1.5}.manager-reminder-item button{flex-shrink:0}@media(max-width:600px){.manager-reminder-item button{width:100%}}
