@@ -293,7 +293,7 @@ public class ApiController {
     boolean reveal =
         u.getRole() == Role.MANAGER
             || (s.getLineupDeadline() != null
-                && LocalDateTime.now().isAfter(s.getLineupDeadline()));
+                && LocalDateTime.now(java.time.ZoneId.of("America/New_York")).isAfter(s.getLineupDeadline()));
     if (!reveal)
       throw new ResponseStatusException(
           HttpStatus.FORBIDDEN, "Lineups stay hidden until the deadline");

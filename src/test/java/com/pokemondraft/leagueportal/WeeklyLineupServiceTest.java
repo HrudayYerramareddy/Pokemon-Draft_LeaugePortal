@@ -63,4 +63,15 @@ class WeeklyLineupServiceTest {
     verify(submissions, never()).save(any(WeeklySubmission.class));
   }
 
+  @Test void bothSubmittedLineupsCannotBeEditedThroughEitherApi() {
+    when(submissions.findByTeamIdAndWeek(1L, 1))
+        .thenReturn(Optional.of(new WeeklySubmission(1L, 1, "10,11,12,13,14,15")));
+    when(submissions.findByTeamIdAndWeek(2L, 1))
+        .thenReturn(Optional.of(new WeeklySubmission(2L, 1, "20,21,22,23,24,25")));
+    ResponseStatusException error = assertThrows(ResponseStatusException.class,
+        () -> service.submit(1L, six));
+    assertTrue(error.getReason().toLowerCase().contains("locked"));
+    verify(submissions, never()).save(any(WeeklySubmission.class));
+  }
+
 }
