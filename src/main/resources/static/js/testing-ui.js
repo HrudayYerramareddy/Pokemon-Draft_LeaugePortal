@@ -33,9 +33,9 @@
         <p><strong>Preserves:</strong> every Pokémon and its price, team names, coaches, passwords,
            divisions, draft order, team logos, league name, draft format, and official schedule.</p>
         <div id="league-reset-preview" class="manager-reset-stats muted">Loading reset preview…</div>
-        <label class="manager-reset-confirm">Type <strong>RESET ENTIRE LEAGUE</strong> to enable reset
-          <input id="league-reset-phrase" type="text" autocomplete="off" spellcheck="false"
-            placeholder="RESET ENTIRE LEAGUE">
+        <label class="manager-reset-confirm">Enter the private league reset password to enable reset
+          <input id="league-reset-phrase" type="password" autocomplete="off" spellcheck="false"
+            placeholder="League reset password">
         </label>
         <button id="reset-league-now" class="danger" type="button" disabled>Reset Entire League</button>
         <p class="muted small">Permanent without a separate database backup. Nothing is reset by deploying code or viewing this page.</p>
@@ -47,7 +47,7 @@
     const resetButton = $tool("#reset-league-now");
     let previewReady = false;
     phrase.addEventListener("input", () => {
-      resetButton.disabled = !previewReady || phrase.value !== "RESET ENTIRE LEAGUE";
+      resetButton.disabled = !previewReady || !phrase.value.trim();
     });
 
     async function loadData() {
@@ -133,7 +133,7 @@
       try {
         await api("/api/manager/league-reset", {
           method:"POST",
-          body:{confirmation:"RESET ENTIRE LEAGUE"}
+          body:{password:phrase.value}
         });
         toast("League reset to its pre-draft state");
         await refreshBase();

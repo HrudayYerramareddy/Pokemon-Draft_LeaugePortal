@@ -5,6 +5,9 @@ import com.pokemondraft.leagueportal.services.TestRosterService;
 import com.pokemondraft.leagueportal.services.WeekLockService;
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -12,16 +15,18 @@ import org.springframework.web.server.ResponseStatusException;
 /** Management operations never execute automatically during deployment. */
 @RestController
 public class LeagueAdministrationController {
-  public static final String RESET_PHRASE = "RESET ENTIRE LEAGUE";
+  private final String resetPassword;
   private final AuthService auth;
   private final TestRosterService resets;
   private final WeekLockService weekLocks;
 
   public LeagueAdministrationController(AuthService auth,
-      TestRosterService resets, WeekLockService weekLocks) {
+      TestRosterService resets, WeekLockService weekLocks,
+      @Value("${LEAGUE_RESET_PASSWORD:}") String resetPassword) {
     this.auth = auth;
     this.resets = resets;
     this.weekLocks = weekLocks;
+    this.resetPassword = resetPassword;
   }
 
   @GetMapping("/api/weeks/locks")
@@ -48,14 +53,18 @@ public class LeagueAdministrationController {
     return resets.resetPreview();
   }
 
-  public record ResetRequest(String confirmation) {}
+  public record ResetRequest(String password) {}
 
   @PostMapping("/api/manager/league-reset")
   public Map<String, Integer> reset(@RequestBody ResetRequest request, HttpSession session) {
     auth.manager(session);
-    if (request == null || !RESET_PHRASE.equals(request.confirmation()))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-          "Type RESET ENTIRE LEAGUE to confirm");
+    if (resetPassword.isBlank())
+      throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+          "League reset is disabled until the owner configures LEAGUE_RESET_PASSWORD on the server.");
+    if (request == null || request.password() == null ||
+        !MessageDigest.isEqual(resetPassword.getBytes(StandardCharsets.UTF_8),
+            request.password().getBytes(StandardCharsets.UTF_8)))
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Incorrect league reset password.");
     return resets.resetLeague();
   }
 }
