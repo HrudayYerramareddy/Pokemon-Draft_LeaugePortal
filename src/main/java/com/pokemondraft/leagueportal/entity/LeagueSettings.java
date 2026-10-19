@@ -17,6 +17,8 @@ public class LeagueSettings {
   // Null represents false until the one-time migration completes.
   private Boolean waiverProcessed = false;
   private Boolean season2PricesApplied = false;
+  // Nullable additive column for existing Neon leagues; no existing values are overwritten.
+  private Boolean draftFinalized = false;
 
   public LeagueSettings() {}
 
@@ -80,6 +82,9 @@ public class LeagueSettings {
     lineupDeadline = v;
   }
 
+
+  public boolean isDraftFinalized() { return Boolean.TRUE.equals(draftFinalized); }
+  public void setDraftFinalized(boolean v) { draftFinalized = v; }
 
   public boolean isSeason2PricesApplied() { return Boolean.TRUE.equals(season2PricesApplied); }
   public void setSeason2PricesApplied(boolean value) { season2PricesApplied = value; }

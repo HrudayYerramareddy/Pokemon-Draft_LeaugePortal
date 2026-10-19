@@ -3,6 +3,8 @@ package com.pokemondraft.leagueportal.controllers;
 import com.pokemondraft.leagueportal.entity.AppUser;
 import com.pokemondraft.leagueportal.services.AuthService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import com.pokemondraft.leagueportal.dto.UserDto;
 import com.pokemondraft.leagueportal.mapper.LeagueMapper;
 import org.springframework.web.bind.annotation.*;
@@ -19,8 +21,11 @@ public class AuthController {
   public record LoginRequest(String username, String password) {}
 
   @PostMapping("/login")
-  public UserDto login(@RequestBody LoginRequest req, HttpSession session) {
-    return LeagueMapper.authUser(auth.login(req.username(), req.password(), session));
+  public UserDto login(@RequestBody LoginRequest req, HttpSession session,
+      HttpServletRequest request) {
+    var user = auth.login(req.username(), req.password(), session);
+    request.changeSessionId(); // Avoid reusing a pre-login session identifier.
+    return LeagueMapper.authUser(user);
   }
 
   public record ChangePasswordRequest(String currentPassword, String newPassword) {}
@@ -36,8 +41,8 @@ public class AuthController {
   }
 
   @PostMapping("/manager/users/{id}/reset-password")
-  public void resetPassword(@PathVariable Long id, HttpSession session) {
-    auth.resetPassword(session, id);
+  public Map<String, String> resetPassword(@PathVariable Long id, HttpSession session) {
+    return Map.of("temporaryPassword", auth.resetPassword(session, id));
   }
 
   @PostMapping("/logout")

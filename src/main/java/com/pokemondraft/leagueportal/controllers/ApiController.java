@@ -28,6 +28,7 @@ public class ApiController {
   private final WeeklySubmissionRepository submissions;
   private final FreeAgentBidRepository bids;
   private final FreeAgencyService freeAgency;
+  private final WeeklyLineupService lineupService;
   private final TransactionRecordRepository transactions;
 
   public ApiController(
@@ -43,6 +44,7 @@ public class ApiController {
       WeeklySubmissionRepository submissions,
       FreeAgentBidRepository bids,
       FreeAgencyService freeAgency,
+      WeeklyLineupService lineupService,
       TransactionRecordRepository transactions) {
     this.auth = auth;
     this.teams = teams;
@@ -56,6 +58,7 @@ public class ApiController {
     this.submissions = submissions;
     this.bids = bids;
     this.freeAgency = freeAgency;
+    this.lineupService = lineupService;
     this.transactions = transactions;
   }
 
@@ -101,7 +104,18 @@ public class ApiController {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "FAAB must be between $0 and $3");
       t.setFaBudget(r.faBudget());
     }
-    if (r.draftPosition() != null) t.setDraftPosition(r.draftPosition());
+    if (r.draftPosition() != null && r.draftPosition() != t.getDraftPosition()) {
+      if (picks.count() > 0 || settings().isDraftFinalized())
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+            "Draft order cannot be changed after the first pick. Your current order is preserved.");
+      if (r.draftPosition() < 1 || r.draftPosition() > 16)
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Draft position must be from 1 to 16.");
+      if (teams.findAll().stream().anyMatch(other -> !other.getId().equals(id)
+          && other.getDraftPosition() == r.draftPosition()))
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+            "That draft position is already assigned to another team. Swap their positions before starting the draft.");
+      t.setDraftPosition(r.draftPosition());
+    }
     if (r.manualRank() != null) t.setManualRank(r.manualRank());
     return teams.save(t);
   }
@@ -126,6 +140,9 @@ public class ApiController {
     if (r.price() < 0 || r.price() > 20)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pokémon draft prices must be between $0 and $20.");
     Pokemon p = pokemon.findById(id).orElseThrow();
+    if (p.getPrice() != r.price() && (picks.count() > 0 || settings().isDraftFinalized()))
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "Pokémon prices are locked once the draft begins. Existing draft and roster values stay unchanged.");
     p.setPrice(r.price());
     return pokemon.save(p);
   }
@@ -168,6 +185,13 @@ public class ApiController {
   public void undo(HttpSession session) {
     auth.manager(session);
     draft.undoLast();
+  }
+
+  @PostMapping("/manager/draft/finalize")
+  public Map<String, Object> finalizeDraft(HttpSession session) {
+    auth.manager(session);
+    draft.finalizeDraft();
+    return Map.of("finalized", true, "picks", picks.count());
   }
 
   @GetMapping("/standings")
@@ -235,36 +259,14 @@ public class ApiController {
 
   public record LineupRequest(List<Long> pokemonIds) {}
 
+  // Legacy endpoint must use the same strict, one-way lineup locking rules.
   @PostMapping("/lineup")
   public WeeklySubmission submitLineup(@RequestBody LineupRequest r, HttpSession session) {
     AppUser u = auth.current(session);
     if (u.getRole() == Role.MANAGER)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Manager has no team lineup");
-    LeagueSettings s = settings();
-    if (!SeasonCalendar.week(s.getCurrentWeek()).lineupRequired())
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No lineups can be submitted in Week " + s.getCurrentWeek() + ".");
-    if (matchups.findByWeekOrderByIdAsc(s.getCurrentWeek()).stream().noneMatch(m ->
-        u.getTeamId().equals(m.getHomeTeamId()) || u.getTeamId().equals(m.getAwayTeamId())))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Your team has no scheduled matchup in Week " + s.getCurrentWeek() + ".");
-    if (s.getLineupDeadline() != null && LocalDateTime.now().isAfter(s.getLineupDeadline()))
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The Week " + s.getCurrentWeek() + " lineup deadline has passed.");
-    if (r.pokemonIds() == null || new HashSet<>(r.pokemonIds()).size() != 6)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 different Pokémon from your roster.");
-    Set<Long> mine =
-        roster.findByTeamId(u.getTeamId()).stream()
-            .map(RosterEntry::getPokemonId)
-            .collect(Collectors.toSet());
-    if (!mine.containsAll(r.pokemonIds()))
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "One or more selected Pokémon are not on your roster. Refresh and choose again.");
-    String csv = r.pokemonIds().stream().map(String::valueOf).collect(Collectors.joining(","));
-    WeeklySubmission ws =
-        submissions
-            .findByTeamIdAndWeek(u.getTeamId(), s.getCurrentWeek())
-            .orElse(new WeeklySubmission(u.getTeamId(), s.getCurrentWeek(), csv));
-    ws.setPokemonIdsCsv(csv);
-    ws.setSubmittedAt(LocalDateTime.now());
-    return submissions.save(ws);
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Commissioners cannot submit team lineups.");
+    return lineupService.submit(u.getTeamId(), r.pokemonIds());
   }
 
   @GetMapping("/lineups/week/{week}")
@@ -356,7 +358,15 @@ public class ApiController {
     if (r.regularSeasonWeeks() != null && r.regularSeasonWeeks() != SeasonCalendar.REGULAR_SEASON_END)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Published schedule ends in Week 13");
     if (r.draftOpen() != null) s.setDraftOpen(r.draftOpen());
-    if (r.snakeDraft() != null) s.setSnakeDraft(r.snakeDraft());
+    if (r.snakeDraft() != null && r.snakeDraft() != s.isSnakeDraft()) {
+      if (picks.count() > 0 || s.isDraftFinalized())
+        throw new ResponseStatusException(HttpStatus.CONFLICT,
+            "Snake/linear draft format cannot change after the first pick.");
+      s.setSnakeDraft(r.snakeDraft());
+    }
+    if (r.draftOpen() != null && r.draftOpen() && s.isDraftFinalized())
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "The official draft is finalized. It cannot be reopened.");
     // Random seeds cannot change the published season schedule.
     if (r.lineupDeadline() != null)
       s.setLineupDeadline(
@@ -375,6 +385,7 @@ public class ApiController {
     m.put("currentWeek", s.getCurrentWeek());
     m.put("regularSeasonWeeks", s.getRegularSeasonWeeks());
     m.put("draftOpen", s.isDraftOpen());
+    m.put("draftFinalized", s.isDraftFinalized());
     m.put("snakeDraft", s.isSnakeDraft());
     m.put("scheduleSeed", s.getScheduleSeed());
     m.put("lineupDeadline", s.getLineupDeadline());

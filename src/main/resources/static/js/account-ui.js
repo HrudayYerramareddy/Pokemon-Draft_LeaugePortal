@@ -134,10 +134,28 @@ async function renderAccount() {
       const id = Number($("#reset-user").value);
       if (!id) return toast("Select a coach", true);
       const name = users.find(u => u.id === id)?.username || "this coach";
-      if (!confirm(`Reset ${name}'s password to "password"?`)) return;
+      if (!confirm(`Generate a new temporary password for ${name}? Their old password will immediately stop working.`)) return;
       try {
-        await api(`/api/auth/manager/users/${id}/reset-password`, {method: "POST"});
-        toast(`Password reset for ${name}`);
+        const result = await api(`/api/auth/manager/users/${id}/reset-password`, {method: "POST"});
+        const secret = result?.temporaryPassword;
+        if (!secret) throw new Error("No temporary password returned. Try again.");
+        // Shown once; it is never stored in localStorage or included in a URL.
+        document.querySelector("#manager-temp-password")?.remove();
+        const output = document.createElement("div");
+        output.id = "manager-temp-password";
+        output.className = "card";
+        const heading = document.createElement("strong");
+        heading.textContent = "New temporary password for " + name;
+        const code = document.createElement("code");
+        code.textContent = secret;
+        code.style.cssText = "display:block;user-select:all;overflow-wrap:anywhere;margin:12px 0;font-size:16px;";
+        const info = document.createElement("p");
+        info.textContent = "Give this privately to the coach and ask them to change it immediately. Copy it now; you cannot retrieve it again.";
+        const close = document.createElement("button");
+        close.type = "button"; close.textContent = "Hide password"; close.onclick = () => output.remove();
+        output.append(heading,code,info,close);
+        $("#reset-password").insertAdjacentElement("afterend", output);
+        toast(`New temporary password generated for ${name}`);
       } catch (e) { toast(e.message, true); }
     });
   }
