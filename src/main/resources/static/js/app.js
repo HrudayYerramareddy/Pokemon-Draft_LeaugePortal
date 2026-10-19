@@ -63,6 +63,7 @@ async function enterApp() {
     `<strong>${esc(state.user.username)}</strong><br>${esc(state.user.role)}${state.user.teamId ? ` · ${esc(teamName(state.user.teamId))}` : ""}`;
   if (state.user.teamId) refreshTeamIdentity(state.teams.find(t => Number(t.id) === Number(state.user.teamId)));
   $("#manager-nav").classList.toggle("hidden", state.user.role !== "MANAGER");
+  document.querySelector('[data-page="freeagency"]')?.classList.toggle("hidden", state.user.role === "MANAGER");
   await showPage("home");
 }
 
@@ -111,6 +112,7 @@ $$("[data-page]").forEach((b) =>
 );
 
 async function showPage(page) {
+  if (page === "freeagency" && state.user?.role === "MANAGER") page = "manager";
   state.page = page;
   $$(".page").forEach((p) => p.classList.add("hidden"));
   $(`#page-${page}`).classList.remove("hidden");
@@ -356,7 +358,28 @@ async function renderManager() {
         <label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label>
         <button id="save-settings" class="primary">Save Settings</button>
       </div></div>
+      <section class="card manager-faab-process" id="manager-faab-process">
+        <h2>Process FAAB Bids</h2>
+        <p class="muted">Blind bids stay private. Process manually after 8:00 PM Eastern on November 28 and December 1. Bidding closes at 7:00 PM Eastern on each date. Winners appear in Transaction History.</p>
+        <button type="button" class="primary" id="manager-process-faab">Process Bids</button>
+        <p class="muted small" id="manager-faab-message" role="status"></p>
+      </section>
     </div>`;
+  $("#manager-process-faab").addEventListener("click", async () => {
+    const button = $("#manager-process-faab");
+    if (!confirm("Process the current Week 4 FAAB period? This will award winning bids, update rosters, and permanently deduct FAAB from winning teams. Continue?")) return;
+    button.disabled = true;
+    try {
+      const result = await api("/api/manager/free-agency/process", { method:"POST" });
+      toast(`FAAB period ${result.period} processed: ${result.winners} winning bid(s)`);
+      $("#manager-faab-message").textContent = `Period ${result.period} processed successfully. Results are in Free Agency → Transactions for coaches.`;
+      await refreshBase();
+      window.refreshCommissionerReminders?.();
+    } catch (error) {
+      toast(error.message, true);
+      $("#manager-faab-message").textContent = error.message;
+    } finally { button.disabled = false; }
+  });
   $("#save-settings").addEventListener("click", async () => {
     try {
       state.settings = await api("/api/manager/settings", {

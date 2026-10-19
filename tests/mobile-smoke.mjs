@@ -21,8 +21,15 @@ async function checkViewport(width, height, role) {
     await page.locator("#login-button").click();
     await page.locator("#app:not(.hidden)").waitFor();
     const pages = role === "manager"
-      ? ["home","draft","rosters","standings","schedule","playoffs","lineup","freeagency","manager","account"]
+      ? ["home","draft","rosters","standings","schedule","playoffs","lineup","manager","account"]
       : ["home","draft","rosters","standings","schedule","playoffs","lineup","freeagency","account"];
+    if (role === "manager") {
+      if (await page.locator('.sidebar nav button[data-page="freeagency"]').isVisible())
+        throw new Error("Commissioner must not see the Free Agency tab");
+    } else {
+      if (!await page.locator('.sidebar nav button[data-page="freeagency"]').isVisible())
+        throw new Error("Coaches must retain the Free Agency tab");
+    }
     for (const name of pages) {
       const selector = name === "account" ? '.sidebar > button[data-page="account"]'
         : `.sidebar nav button[data-page="${name}"]`;
@@ -31,6 +38,11 @@ async function checkViewport(width, height, role) {
       await page.locator(`#page-${name}:not(.hidden)`).waitFor();
       // Error rendering still keeps the page visible, so detect the error card.
       const pageError = await page.locator(`#page-${name} h2`).allTextContents();
+      if (name === "manager" && role === "manager") {
+        await page.locator("#manager-process-faab").waitFor();
+        if (await page.locator("#page-manager").getByText("All FAAB Bids").count())
+          throw new Error("Blind bid table must not appear to commissioner");
+      }
       if (pageError.includes("Page error"))
         throw new Error(`Page ${name} rendered an API exception`);
       if (width <= 800) {
