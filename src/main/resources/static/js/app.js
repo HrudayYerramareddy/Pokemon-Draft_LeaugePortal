@@ -54,7 +54,6 @@ async function boot() {
 }
 async function enterApp() {
   $("#login-screen").classList.add("hidden");
-  $("#app").classList.remove("hidden");
   const dash = await api("/api/dashboard");
   state.user = dash.user;
   state.teams = dash.teams;
@@ -64,6 +63,8 @@ async function enterApp() {
   if (state.user.teamId) refreshTeamIdentity(state.teams.find(t => Number(t.id) === Number(state.user.teamId)));
   $("#manager-nav").classList.toggle("hidden", state.user.role !== "MANAGER");
   document.querySelector('[data-page="freeagency"]')?.classList.toggle("hidden", state.user.role === "MANAGER");
+  // Apply role-based navigation before allowing the app to become visible.
+  $("#app").classList.remove("hidden");
   await showPage("home");
 }
 
@@ -355,7 +356,6 @@ async function renderManager() {
         <label>Week <input id="setting-week" type="number" min="1" max="16" value="${state.settings.currentWeek}"></label>
         <label>Lineup deadline <input id="setting-deadline" type="datetime-local" value="${state.settings.lineupDeadline ? String(state.settings.lineupDeadline).slice(0, 16) : ""}"></label>
         <label><input id="setting-draft" type="checkbox" ${state.settings.draftOpen ? "checked" : ""}> Draft open</label>
-        <label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label>
         <button id="save-settings" class="primary">Save Settings</button>
       </div></div>
       <section class="card manager-faab-process" id="manager-faab-process">
@@ -388,7 +388,6 @@ async function renderManager() {
           leagueName: $("#setting-name").value,
           currentWeek: Number($("#setting-week").value),
           draftOpen: $("#setting-draft").checked,
-          snakeDraft: $("#setting-snake").checked,
           lineupDeadline: $("#setting-deadline").value,
         },
       });

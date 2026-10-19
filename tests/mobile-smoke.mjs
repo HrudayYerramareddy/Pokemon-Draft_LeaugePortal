@@ -40,6 +40,8 @@ async function checkViewport(width, height, role) {
       const pageError = await page.locator(`#page-${name} h2`).allTextContents();
       if (name === "manager" && role === "manager") {
         await page.locator("#manager-process-faab").waitFor();
+        if (await page.locator("#setting-snake").count())
+          throw new Error("Commissioner must not see a snake draft toggle");
         if (await page.locator("#page-manager").getByText("All FAAB Bids").count())
           throw new Error("Blind bid table must not appear to commissioner");
       }
