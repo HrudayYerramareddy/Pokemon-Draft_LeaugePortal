@@ -34,4 +34,29 @@ class ScheduleServiceTest {
     assertEquals(0, away.getLosses());
     assertEquals(0, home.getDifferential());
   }
+  @Test void onlyLegalBestOfThreeScoresAreAllowed() {
+    for (int[] good : new int[][]{{2,0},{2,1},{0,2},{1,2}})
+      assertTrue(ScheduleService.validSeriesScore(good[0],good[1]));
+    for (int[] bad : new int[][]{{0,0},{1,1},{1,0},{2,2},{3,0},{4,2},{-1,2}})
+      assertFalse(ScheduleService.validSeriesScore(bad[0],bad[1]));
+    assertFalse(ScheduleService.validSeriesScore(null,2));
+  }
+
+  @Test void rejectsInvalidRegularAndPlayoffScoresWithoutSaving() {
+    TeamRepository teams = mock(TeamRepository.class);
+    MatchupRepository matchups = mock(MatchupRepository.class);
+    LeagueSettingsRepository settings = mock(LeagueSettingsRepository.class);
+    ScheduleService service = new ScheduleService(teams,matchups,settings,mock(WeekLockService.class));
+    Matchup regular = new Matchup(1,1L,2L), playoff = new Matchup(14,1L,2L);
+    when(matchups.findById(1L)).thenReturn(Optional.of(regular));
+    when(matchups.findById(14L)).thenReturn(Optional.of(playoff));
+    for (int[] bad : new int[][]{{1,1},{3,0},{2,2},{0,1},{4,2}}) {
+      assertThrows(org.springframework.web.server.ResponseStatusException.class,
+          () -> service.setResult(1L,bad[0],bad[1]));
+      assertThrows(org.springframework.web.server.ResponseStatusException.class,
+          () -> service.setResult(14L,bad[0],bad[1]));
+    }
+    verify(matchups,never()).save(any(Matchup.class));
+  }
 }
+

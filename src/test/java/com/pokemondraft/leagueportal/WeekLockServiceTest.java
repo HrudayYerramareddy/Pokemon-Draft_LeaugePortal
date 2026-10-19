@@ -57,4 +57,19 @@ class WeekLockServiceTest {
     assertFalse(service.isLocked(1));
     assertEquals(16, service.statuses().size());
   }
+  @Test void cannotLockWeekWithInvalidBestOfThreeScores() {
+    List<Matchup> games = new ArrayList<>();
+    for(int i=0;i<8;i++){
+      Matchup game=new Matchup(1,(long)i+1,(long)i+9);
+      game.setPlayed(true);
+      game.setHomeScore(i==0?3:2);
+      game.setAwayScore(0);
+      games.add(game);
+    }
+    when(matchups.findByWeekOrderByIdAsc(1)).thenReturn(games);
+    assertEquals(HttpStatus.CONFLICT,assertThrows(ResponseStatusException.class,
+        () -> service.setLocked(1,true)).getStatusCode());
+    verify(locks,never()).save(any());
+  }
 }
+
