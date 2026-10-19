@@ -67,4 +67,24 @@ class DraftServiceTest {
     assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
         () -> draft.pick(1L, false, 99L)).getStatusCode());
   }
+  @Test void refusesPickOverTheHundredDollarCap() {
+    Pokemon existing = new Pokemon("Expensive", 99);
+    when(roster.findByTeamId(1L)).thenReturn(List.of(new RosterEntry(1L, 41L)));
+    when(pokemon.findById(41L)).thenReturn(Optional.of(existing));
+    ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+        () -> draft.pick(1L, false, 99L));
+    assertTrue(ex.getReason().contains("$100"));
+    verify(picks, never()).save(any());
+  }
+
+  @Test void finalizedDraftRefusesNewPicksOrUndo() {
+    LeagueSettings config = new LeagueSettings();
+    config.setDraftFinalized(true);
+    when(settings.findById(1L)).thenReturn(Optional.of(config));
+    assertEquals(HttpStatus.CONFLICT, assertThrows(ResponseStatusException.class,
+        () -> draft.pick(1L, false, 99L)).getStatusCode());
+    assertEquals(HttpStatus.CONFLICT, assertThrows(ResponseStatusException.class,
+        draft::undoLast).getStatusCode());
+  }
+
 }

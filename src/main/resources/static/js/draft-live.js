@@ -9,6 +9,8 @@
       picks: d.picks.map((p) => [p.overallPick, p.teamId, p.pokemonId]),
       currentTeam: d.currentTeam?.id ?? null,
       draftOpen: d.settings.draftOpen,
+      draftFinalized: d.settings.draftFinalized,
+      snakeDraft: d.settings.snakeDraft,
     });
   }
 
@@ -91,7 +93,10 @@
   window.renderDraft = async function () {
     await originalRenderDraft();
     const d = await api("/api/draft");
-    lastSignature = signature(d);
+    lastSignature = JSON.stringify({pickCount:d.picks.length,
+      currentTeamId:d.currentTeam?.id??null,
+      draftOpen:d.settings.draftOpen,draftFinalized:d.settings.draftFinalized,
+      snakeDraft:d.settings.snakeDraft});
 
     const page = document.querySelector("#page-draft");
     if (!page) return;
@@ -119,11 +124,17 @@
   };
 
   async function checkDraft() {
-    if (refreshing || state.page !== "draft" || !state.user) return;
+    if (refreshing || state.page !== "draft" || !state.user || document.hidden) return;
     refreshing = true;
     try {
-      const d = await api("/api/draft");
-      const next = signature(d);
+      const d = await api("/api/draft/status");
+      const next = JSON.stringify({
+        pickCount:d.pickCount,
+        currentTeamId:d.currentTeamId,
+        draftOpen:d.draftOpen,
+        draftFinalized:d.draftFinalized,
+        snakeDraft:d.snakeDraft
+      });
       if (lastSignature !== null && next !== lastSignature) {
         if (!document.querySelector(".pokemon-detail-overlay")) {
           await window.renderDraft();
@@ -138,5 +149,8 @@
     }
   }
 
-  setInterval(checkDraft, 3000);
+  setInterval(checkDraft, 5000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) checkDraft();
+  });
 })();

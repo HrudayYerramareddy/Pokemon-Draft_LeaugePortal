@@ -27,8 +27,8 @@
   window.bidTable = function (list) {
     const manager = state.user.role === "MANAGER";
     return `<div class="card"><h2>${manager ? "All FAAB Bids" : "My FAAB Bids"}</h2>
-      <div class="table-wrap"><table><thead><tr><th>Team</th><th>Free Agent</th><th>Drop If Won</th><th>Bid</th><th>Status</th></tr></thead>
-      <tbody>${list.map((b) => `<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(bidPokemonName(b, "wanted"))}</td><td>${esc(bidPokemonName(b, "drop"))}</td><td>$${b.amount}</td><td>${esc(b.status)}</td></tr>`).join("") || '<tr><td colspan="5">No bids yet</td></tr>'}</tbody></table></div></div>`;
+      <div class="table-wrap"><table><thead><tr><th>Team</th><th>Free Agent</th><th>Drop If Won</th><th>Bid</th><th>Status</th>${manager ? "" : "<th>Action</th>"}</tr></thead>
+      <tbody>${list.map((b) => `<tr><td>${esc(teamName(b.teamId))}</td><td>${esc(bidPokemonName(b, "wanted"))}</td><td>${esc(bidPokemonName(b, "drop"))}</td><td>$${b.amount}</td><td>${esc(b.status)}</td>${manager ? "" : `<td>${b.status === "PENDING" ? `<button type="button" class="secondary cancel-faab-bid" data-id="${b.id}">Withdraw</button>` : "—"}</td>`}</tr>`).join("") || `<tr><td colspan="${manager ? 5 : 6}">No bids yet</td></tr>`}</tbody></table></div></div>`;
   };
 
   window.renderBids = async function () {
@@ -87,6 +87,22 @@
       </div>
       <p id="bid-preview" class="small muted" role="status" aria-live="polite"></p>
       <p id="bid-error" class="form-error hidden" role="alert"></p></div>${bidTable(list)}`;
+
+    $("#fa-content .cancel-faab-bid").forEach(button => {
+      button.disabled = !open;
+      button.onclick = async () => {
+        if (!confirm("Withdraw this pending FAAB bid? It will no longer be eligible to win.")) return;
+        button.disabled = true;
+        try {
+          await api(`/api/free-agency/bids/${button.dataset.id}`, {method:"DELETE"});
+          toast("Pending bid withdrawn");
+          await renderBids();
+        } catch (error) {
+          toast(error.message, true);
+          button.disabled = false;
+        }
+      };
+    });
 
     const preview = () => {
       const wanted = free.find(p => p.id === Number($("#bid-wanted").value));

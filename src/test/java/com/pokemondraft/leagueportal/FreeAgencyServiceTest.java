@@ -34,6 +34,8 @@ class FreeAgencyServiceTest {
     third.setPlayed(true);
     when(matchups.findByWeekOrderByIdAsc(3)).thenReturn(Collections.nCopies(8, third));
     when(transactions.findAllByOrderByCreatedAtDesc()).thenAnswer(inv -> List.copyOf(journal));
+    when(transactions.countByType("WAIVER_PERIOD_PROCESSED")).thenAnswer(inv ->
+        journal.stream().filter(t -> "WAIVER_PERIOD_PROCESSED".equals(t.getType())).count());
     when(transactions.save(any(TransactionRecord.class))).thenAnswer(inv -> {
       TransactionRecord record = inv.getArgument(0);
       journal.add(record);
@@ -149,6 +151,19 @@ class FreeAgencyServiceTest {
     ResponseStatusException error = assertThrows(ResponseStatusException.class,
         () -> service.submitBid(1L,99L,10L,2));
     assertTrue(error.getReason().contains("$1 FAAB available"));
+  }
+
+  @Test void coachMayWithdrawOnlyOwnPendingBids() {
+    FreeAgentBid pending = new FreeAgentBid(1L, 99L, 10L, 1);
+    when(bids.findById(42L)).thenReturn(Optional.of(pending));
+    service.cancelBid(1L, 42L);
+    verify(bids).delete(pending);
+    assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
+        () -> service.cancelBid(2L, 42L)).getStatusCode());
+    pending.setStatus(BidStatus.WON);
+    assertEquals(HttpStatus.CONFLICT, assertThrows(ResponseStatusException.class,
+        () -> service.cancelBid(1L, 42L)).getStatusCode());
+    verify(bids, times(1)).delete(pending);
   }
 
 }

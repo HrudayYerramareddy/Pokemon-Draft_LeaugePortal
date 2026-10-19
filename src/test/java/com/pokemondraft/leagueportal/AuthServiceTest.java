@@ -66,8 +66,10 @@ class AuthServiceTest {
     assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
         () -> auth.resetPassword(session, 1L)).getStatusCode());
     session.setAttribute(AuthService.SESSION_USER_ID, 2L);
-    auth.resetPassword(session, 1L);
-    auth.login("coach1", "password", new MockHttpSession());
+    String temporary = auth.resetPassword(session, 1L);
+    assertNotEquals("password", temporary);
+    assertTrue(temporary.length() >= 20);
+    auth.login("coach1", temporary, new MockHttpSession());
     assertNotEquals("password", coach.getPassword());
     assertEquals(HttpStatus.FORBIDDEN, assertThrows(ResponseStatusException.class,
         () -> auth.resetPassword(session, 2L)).getStatusCode());
@@ -79,18 +81,26 @@ class AuthServiceTest {
     assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(ResponseStatusException.class,
         () -> auth.changePassword(session, "password", "newPassword123")).getStatusCode());
   }
-  @Test void loginExplainsMissingUsernameAndIncorrectPasswordWithoutCreatingSession() {
+  @Test void loginDoesNotRevealAccountExistence() {
     ResponseStatusException missing = assertThrows(ResponseStatusException.class,
         () -> auth.login("not-a-coach", "password", session));
-    assertTrue(missing.getReason().contains("Username not found"));
     ResponseStatusException wrong = assertThrows(ResponseStatusException.class,
         () -> auth.login("coach1", "wrong", session));
-    assertTrue(wrong.getReason().contains("Incorrect password"));
+    assertEquals(missing.getReason(), wrong.getReason());
     assertTrue(assertThrows(ResponseStatusException.class,
         () -> auth.login("", "password", session)).getReason().contains("username"));
     assertTrue(assertThrows(ResponseStatusException.class,
         () -> auth.login("coach1", "", session)).getReason().contains("password"));
     assertNull(session.getAttribute(AuthService.SESSION_USER_ID));
+  }
+
+  @Test void repeatedFailedLoginsAreThrottled() {
+    for (int i=0; i<6; i++)
+      assertEquals(HttpStatus.UNAUTHORIZED, assertThrows(ResponseStatusException.class,
+          () -> auth.login("coach1", "wrong", session)).getStatusCode());
+    assertEquals(HttpStatus.TOO_MANY_REQUESTS,
+        assertThrows(ResponseStatusException.class,
+            () -> auth.login("coach1", "password", session)).getStatusCode());
   }
 
 }

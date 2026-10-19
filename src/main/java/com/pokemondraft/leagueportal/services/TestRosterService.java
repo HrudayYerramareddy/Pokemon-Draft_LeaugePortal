@@ -218,6 +218,7 @@ public class TestRosterService {
     LeagueSettings league = settings.findById(1L).orElseThrow();
     league.setCurrentWeek(1);
     league.setDraftOpen(true);
+    league.setDraftFinalized(false);
     league.setWaiverProcessed(false);
     league.setLineupDeadline(null);
     settings.save(league);

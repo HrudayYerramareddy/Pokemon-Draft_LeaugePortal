@@ -8,4 +8,5 @@ public interface FreeAgentBidRepository extends JpaRepository<FreeAgentBid, Long
   List<FreeAgentBid> findByTeamIdOrderByCreatedAtDesc(Long teamId);
 
   List<FreeAgentBid> findByStatus(BidStatus status);
+  List<FreeAgentBid> findByTeamIdAndStatusOrderByCreatedAtDesc(Long teamId, BidStatus status);
 }

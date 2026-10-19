@@ -1,6 +1,11 @@
 /* Password management: self-service changes and commissioner resets. */
 async function renderAccount() {
   const manager = state.user.role === "MANAGER";
+  const security = await api("/api/auth/security");
+  const passwordWarning = security.usingInitialPassword
+    ? '<div class="card form-error" role="status"><strong>Change your initial password.</strong> '
+      + 'This account still uses the original setup password. Use the Change My Password form below before the league begins.</div>'
+    : "";
   const myTeam = state.teams.find(t => Number(t.id) === Number(state.user.teamId));
   const branding = !manager && myTeam ? `
     <section class="card branding-card" aria-labelledby="team-branding-heading">
@@ -39,6 +44,7 @@ async function renderAccount() {
   $("#page-account").innerHTML = `
     <h1>Account Settings</h1>
     ${branding}
+    ${passwordWarning}
     <div class="card">
       <h2>Change My Password</h2>
       <p class="muted">Signed in as ${esc(state.user.username)}. Use 8–72 characters.</p>
@@ -93,7 +99,7 @@ async function renderAccount() {
       try {
         const body = new FormData();
         body.append("file", file);
-        const response = await fetch("/api/teams/me/logo", {method:"POST", body});
+        const response = await fetch("/api/teams/me/logo", {method:"POST", body, headers: {"X-Requested-With":"XMLHttpRequest"}});
         const result = await response.json();
         if (!response.ok) throw new Error(apiErrorMessage(response.status, result));
         refreshTeamIdentity(result);
@@ -134,10 +140,28 @@ async function renderAccount() {
       const id = Number($("#reset-user").value);
       if (!id) return toast("Select a coach", true);
       const name = users.find(u => u.id === id)?.username || "this coach";
-      if (!confirm(`Reset ${name}'s password to "password"?`)) return;
+      if (!confirm(`Generate a new temporary password for ${name}? Their old password will immediately stop working.`)) return;
       try {
-        await api(`/api/auth/manager/users/${id}/reset-password`, {method: "POST"});
-        toast(`Password reset for ${name}`);
+        const result = await api(`/api/auth/manager/users/${id}/reset-password`, {method: "POST"});
+        const secret = result?.temporaryPassword;
+        if (!secret) throw new Error("No temporary password returned. Try again.");
+        // Shown once; it is never stored in localStorage or included in a URL.
+        document.querySelector("#manager-temp-password")?.remove();
+        const output = document.createElement("div");
+        output.id = "manager-temp-password";
+        output.className = "card";
+        const heading = document.createElement("strong");
+        heading.textContent = "New temporary password for " + name;
+        const code = document.createElement("code");
+        code.textContent = secret;
+        code.style.cssText = "display:block;user-select:all;overflow-wrap:anywhere;margin:12px 0;font-size:16px;";
+        const info = document.createElement("p");
+        info.textContent = "Give this privately to the coach and ask them to change it immediately. Copy it now; you cannot retrieve it again.";
+        const close = document.createElement("button");
+        close.type = "button"; close.textContent = "Hide password"; close.onclick = () => output.remove();
+        output.append(heading,code,info,close);
+        $("#reset-password").insertAdjacentElement("afterend", output);
+        toast(`New temporary password generated for ${name}`);
       } catch (e) { toast(e.message, true); }
     });
   }
