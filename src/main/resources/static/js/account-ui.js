@@ -1,6 +1,11 @@
 /* Password management: self-service changes and commissioner resets. */
 async function renderAccount() {
   const manager = state.user.role === "MANAGER";
+  const security = await api("/api/auth/security");
+  const passwordWarning = security.usingInitialPassword
+    ? '<div class="card form-error" role="status"><strong>Change your initial password.</strong> '
+      + 'This account still uses the original setup password. Use the Change My Password form below before the league begins.</div>'
+    : "";
   const myTeam = state.teams.find(t => Number(t.id) === Number(state.user.teamId));
   const branding = !manager && myTeam ? `
     <section class="card branding-card" aria-labelledby="team-branding-heading">
@@ -39,6 +44,7 @@ async function renderAccount() {
   $("#page-account").innerHTML = `
     <h1>Account Settings</h1>
     ${branding}
+    ${passwordWarning}
     <div class="card">
       <h2>Change My Password</h2>
       <p class="muted">Signed in as ${esc(state.user.username)}. Use 8–72 characters.</p>

@@ -310,6 +310,15 @@ public class ApiController {
     return freeAgency.submitBid(u.getTeamId(), r.wantedPokemonId(), r.dropPokemonId(), r.amount());
   }
 
+  @DeleteMapping("/free-agency/bids/{bidId}")
+  public void withdrawBid(@PathVariable Long bidId, HttpSession session) {
+    AppUser user = auth.current(session);
+    if (user.getRole() != Role.COACH)
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+          "Only coaches can withdraw their own FAAB bids.");
+    freeAgency.cancelBid(user.getTeamId(), bidId);
+  }
+
   @GetMapping("/free-agency/bids")
   public List<Map<String, Object>> bids(HttpSession session) {
     AppUser u = auth.current(session);

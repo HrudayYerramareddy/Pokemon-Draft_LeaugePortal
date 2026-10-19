@@ -127,6 +127,18 @@
     if (!document.hidden) checkNotices();
   });
   window.setInterval(checkNotices, 120000);
+  // Keep the active page centered in the swipeable mobile navigation rail.
+  const nav = document.querySelector(".sidebar nav");
+  nav?.addEventListener("click", event => {
+    const button = event.target.closest("button[data-page]");
+    if (!button) return;
+    noticePanel.classList.add("hidden");
+    exportsPanel.classList.add("hidden");
+    if (window.matchMedia("(max-width: 800px)").matches) {
+      button.scrollIntoView({block:"nearest", inline:"center", behavior:"smooth"});
+    }
+  });
+
 
   const render = renderDraft;
   renderDraft = async function () {

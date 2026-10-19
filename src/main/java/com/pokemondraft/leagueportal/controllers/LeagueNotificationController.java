@@ -69,7 +69,7 @@ public class LeagueNotificationController {
                 +" Eastern.", "lineup"));
     }
 
-    for (FreeAgentBid bid : bids.findByTeamIdOrderByCreatedAtDesc(teamId)) {
+    for (FreeAgentBid bid : bids.findByTeamIdAndStatusOrderByCreatedAtDesc(teamId, BidStatus.WON)) {
       if (bid.getStatus()!=BidStatus.WON) continue;
       Pokemon p=pokemon.findById(bid.getWantedPokemonId()).orElse(null);
       String name=p==null?"your selected Pokémon":p.getName();

@@ -47,9 +47,13 @@ public class AuthService {
 
     String key = username.trim().toLowerCase(Locale.ROOT);
     // Bound memory when many fabricated usernames are submitted by a bot.
-    if (failures.size() > 4096)
+    if (failures.size() >= 4096) {
       failures.entrySet().removeIf(e ->
           System.currentTimeMillis() - e.getValue().started > WINDOW_MILLIS);
+      if (failures.size() >= 4096 && !failures.containsKey(key))
+        throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+            "Too many login attempts right now. Try again later.");
+    }
     FailureWindow window = failures.computeIfAbsent(key, k -> new FailureWindow());
     if (window.locked())
       throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
@@ -112,6 +116,13 @@ public class AuthService {
     return users.findAll().stream().filter(u -> u.getRole() != Role.MANAGER)
         .map(u -> java.util.Map.<String, Object>of("id", u.getId(), "username", u.getUsername(), "role", u.getRole().name()))
         .toList();
+  }
+
+  /** Read-only security warning; never changes a coach's existing password. */
+  public boolean isUsingInitialPassword(HttpSession session) {
+    AppUser u = current(session);
+    String initial = u.getRole() == Role.MANAGER ? "manager" : "password";
+    return matches(initial, u.getPassword());
   }
 
   private void validatePassword(String password) {

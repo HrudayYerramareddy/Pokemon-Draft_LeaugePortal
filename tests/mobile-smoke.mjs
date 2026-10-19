@@ -41,6 +41,63 @@ async function checkViewport(width, height, role) {
           throw new Error(`Page ${name} overflows mobile viewport: ${total}px > ${screen}px`);
       }
     }
+    // Exercise the real backend against this throwaway H2 test league.
+    // These actions NEVER connect to Neon.
+    async function call(method, endpoint, body) {
+      return page.evaluate(async ({method,endpoint,body}) => {
+        const response = await fetch(endpoint,{
+          method,
+          headers:{"Content-Type":"application/json","X-Requested-With":"XMLHttpRequest"},
+          ...(body === undefined ? {} : {body:JSON.stringify(body)})
+        });
+        const text = await response.text();
+        let value;
+        try { value=JSON.parse(text); } catch { value=text; }
+        return {status:response.status,value};
+      },{method,endpoint,body});
+    }
+    if (width === 390 && role === "coach") {
+      const draft = await call("GET","/api/draft");
+      if (draft.status !== 200 || draft.value.picks.length !== 0)
+        throw new Error("Fresh H2 draft should begin with zero picks");
+      const candidate = draft.value.available.find(p => p.price <= 100);
+      const selected = await call("POST","/api/draft/pick",{pokemonId:candidate.id});
+      if (selected.status !== 200)
+        throw new Error("First coach draft pick failed: " + JSON.stringify(selected));
+      const saved = await call("GET","/api/draft");
+      if (saved.value.picks.length !== 1 || saved.value.picks[0].pokemonId !== candidate.id)
+        throw new Error("Draft pick was not persisted on re-read");
+      const duplicate = await call("POST","/api/draft/pick",{pokemonId:candidate.id});
+      if (duplicate.status < 400) throw new Error("Duplicate/out-of-turn draft pick was accepted");
+      const beforeWeek4 = await call("POST","/api/free-agency/bids",
+        {pokemonWantedId:candidate.id,pokemonDropId:candidate.id,amount:1});
+      if (beforeWeek4.status < 400)
+        throw new Error("FAAB bids must remain blocked before Week 4");
+    }
+    if (width === 320 && role === "manager") {
+      const fullSchedule = await call("GET","/api/schedule");
+      const week1 = fullSchedule.value.filter(game => game.week === 1);
+      if (week1.length !== 8) throw new Error("Expected all eight official Week 1 matchups");
+      for (const game of week1) {
+        const result = await call("POST",`/api/manager/results/${game.id}`,
+          {homeScore:2,awayScore:1});
+        if (result.status !== 200) throw new Error("Commissioner could not score a game");
+      }
+      const lock = await call("PUT","/api/manager/weeks/1/lock",{locked:true});
+      if (lock.status !== 200 || lock.value["1"] !== true)
+        throw new Error("Commissioner failed to lock a completed week");
+      const rejected = await call("DELETE",`/api/manager/results/${week1[0].id}`);
+      if (rejected.status !== 409)
+        throw new Error("A locked week allowed score changes");
+      const unlock = await call("PUT","/api/manager/weeks/1/lock",{locked:false});
+      if (unlock.status !== 200 || unlock.value["1"] !== false)
+        throw new Error("Commissioner failed to unlock Week 1");
+      const reset = await call("POST","/api/manager/league-reset",{confirmation:"NO"});
+      if (reset.status < 400) throw new Error("League reset accepted an invalid confirmation");
+      const after = await call("GET","/api/draft");
+      if (after.value.picks.length !== 1)
+        throw new Error("A rejected reset unexpectedly changed the saved draft");
+    }
     if (width <= 800) {
       const style = await page.locator(".sidebar nav").evaluate(el => getComputedStyle(el));
       if (style.overflowX !== "auto")

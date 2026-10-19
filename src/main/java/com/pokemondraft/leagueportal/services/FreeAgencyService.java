@@ -39,8 +39,7 @@ public class FreeAgencyService {
 
   /** Two Week 4 waiver periods; each team retains its original $3 total budget. */
   public int waiverPeriodsProcessed() {
-    return (int) transactions.findAllByOrderByCreatedAtDesc().stream()
-        .filter(t -> "WAIVER_PERIOD_PROCESSED".equals(t.getType())).count();
+    return (int) transactions.countByType("WAIVER_PERIOD_PROCESSED");
   }
 
   public boolean isWaiverWindowOpen() {
@@ -76,6 +75,7 @@ public class FreeAgencyService {
 
   @Transactional
   public FreeAgentBid submitBid(Long teamId, Long wanted, Long drop, int amount) {
+    settings.lockForDraft(); // Serialize concurrent FAAB requests through the existing league row.
     requireWindow();
     Team t = teams.findById(teamId).orElseThrow();
     if (t.getFaBudget() <= 0) throw bad("You have $0 FAAB remaining. You cannot submit another bid.");
@@ -110,8 +110,25 @@ public class FreeAgencyService {
     return bids.save(new FreeAgentBid(teamId, wanted, drop, amount));
   }
 
+  /** Withdraw only your own pending bid before processing begins. */
+  @Transactional
+  public void cancelBid(Long teamId, Long bidId) {
+    settings.lockForDraft();
+    requireWindow();
+    FreeAgentBid bid = bids.findById(bidId).orElseThrow(() ->
+        new ResponseStatusException(HttpStatus.NOT_FOUND, "That FAAB bid no longer exists."));
+    if (!bid.getTeamId().equals(teamId))
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+          "You can only withdraw bids made by your own team.");
+    if (bid.getStatus() != BidStatus.PENDING)
+      throw new ResponseStatusException(HttpStatus.CONFLICT,
+          "This bid has already been processed and cannot be withdrawn.");
+    bids.delete(bid);
+  }
+
   @Transactional
   public Map<String, Object> processBids() {
+    settings.lockForDraft();
     requireWindow();
     List<FreeAgentBid> pending = bids.findByStatus(BidStatus.PENDING);
     Map<Long, List<FreeAgentBid>> groups = new LinkedHashMap<>();

@@ -45,6 +45,11 @@ public class AuthController {
     return Map.of("temporaryPassword", auth.resetPassword(session, id));
   }
 
+  @GetMapping("/security")
+  public Map<String, Boolean> passwordSecurity(HttpSession session) {
+    return Map.of("usingInitialPassword", auth.isUsingInitialPassword(session));
+  }
+
   @PostMapping("/logout")
   public void logout(HttpSession session) {
     session.invalidate();
