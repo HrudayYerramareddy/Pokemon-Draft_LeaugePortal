@@ -346,14 +346,17 @@ async function renderManager() {
     return showPage("home");
   }
   await refreshBase();
-  const mons = await api("/api/pokemon");
   $("#page-manager").innerHTML =
     `<h1>Commissioner</h1><div class="manager-grid">
-  <div class="card"><h2>League Settings</h2><div class="toolbar"><label>Name <input id="setting-name" value="${esc(state.settings.leagueName)}"></label><label>Week <input id="setting-week" type="number" min="1" max="16" value="${state.settings.currentWeek}"></label><label>Lineup deadline <input id="setting-deadline" type="datetime-local" value="${state.settings.lineupDeadline ? String(state.settings.lineupDeadline).slice(0, 16) : ""}"></label><label><input id="setting-draft" type="checkbox" ${state.settings.draftOpen ? "checked" : ""}> Draft open</label><label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label><button id="save-settings" class="primary">Save Settings</button></div></div>
-  <div class="card"><div class="section-title"><div><h2>Teams / Divisions / Draft Order</h2><p class="muted">Manual rank 0 = automatic standings. Use 1–8 only when you want to force placement.</p></div></div><div class="table-wrap"><table><thead><tr><th>Team</th><th>Coach</th><th>Division</th><th>Draft Pos</th><th>Manual Rank</th><th>FAAB</th><th></th></tr></thead><tbody>${state.teams.map((t) => `<tr><td><input id="team-name-${t.id}" value="${esc(t.name)}"></td><td><input id="coach-name-${t.id}" value="${esc(t.coachName)}"></td><td><select id="division-${t.id}"><option ${t.division === "A" ? "selected" : ""}>A</option><option ${t.division === "B" ? "selected" : ""}>B</option></select></td><td><input id="draft-pos-${t.id}" class="inline-input" type="number" min="1" max="16" value="${t.draftPosition}"></td><td><input id="rank-${t.id}" class="inline-input" type="number" min="0" max="8" value="${t.manualRank}"></td><td><input id="budget-${t.id}" class="inline-input" type="number" min="0" value="${t.faBudget}"></td><td><button class="secondary save-team" data-id="${t.id}">Save</button></td></tr>`).join("")}</tbody></table></div></div>
-  <div class="card"><h2>Official Season Schedule</h2><p class="muted">80 published regular-season matchups, three non-playing weeks, and three playoff rounds. Random schedule generation is disabled.</p></div>
-  <div class="card"><div class="section-title"><div><h2>Pokemon Draft Prices</h2><p class="muted">Prototype values are $0–$20 and can all be changed.</p></div><div class="toolbar"><input id="price-search" placeholder="Search Pokemon"><select id="price-sort"><option value="name">Name A-Z</option><option value="price-high">Price High to Low</option><option value="price-low">Price Low to High</option></select></div></div><div class="table-wrap price-table"><table><thead><tr><th>Pokemon</th><th>Price</th><th>Drafted</th><th></th></tr></thead><tbody id="price-body">${mons.map((p) => priceRow(p)).join("")}</tbody></table></div></div>
-  </div>`;
+      <div class="card"><h2>League Settings</h2><div class="toolbar">
+        <label>Name <input id="setting-name" value="${esc(state.settings.leagueName)}"></label>
+        <label>Week <input id="setting-week" type="number" min="1" max="16" value="${state.settings.currentWeek}"></label>
+        <label>Lineup deadline <input id="setting-deadline" type="datetime-local" value="${state.settings.lineupDeadline ? String(state.settings.lineupDeadline).slice(0, 16) : ""}"></label>
+        <label><input id="setting-draft" type="checkbox" ${state.settings.draftOpen ? "checked" : ""}> Draft open</label>
+        <label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label>
+        <button id="save-settings" class="primary">Save Settings</button>
+      </div></div>
+    </div>`;
   $("#save-settings").addEventListener("click", async () => {
     try {
       state.settings = await api("/api/manager/settings", {
@@ -372,53 +375,6 @@ async function renderManager() {
       toast(e.message, true);
     }
   });
-  $$(".save-team").forEach((b) =>
-    b.addEventListener("click", async () => {
-      const id = b.dataset.id;
-      try {
-        await api(`/api/manager/teams/${id}`, {
-          method: "PUT",
-          body: {
-            name: $(`#team-name-${id}`).value,
-            coachName: $(`#coach-name-${id}`).value,
-            division: $(`#division-${id}`).value,
-            draftPosition: Number($(`#draft-pos-${id}`).value),
-            manualRank: Number($(`#rank-${id}`).value),
-            faBudget: Number($(`#budget-${id}`).value),
-          },
-        });
-        toast("Team saved");
-        await refreshBase();
-      } catch (e) {
-        toast(e.message, true);
-      }
-    }),
-  );
-  $("#price-search").addEventListener("input", (e) => {
-    const q = e.target.value.toLowerCase();
-    $$("#price-body tr").forEach((r) =>
-      r.classList.toggle("hidden", !r.dataset.name.includes(q)),
-    );
-  });
-  bindPriceButtons();
-}
-function priceRow(p) {
-  return `<tr data-name="${esc(p.name.toLowerCase())}"><td>${esc(p.name)}</td><td><input id="price-${p.id}" type="number" min="0" max="20" value="${p.price}"></td><td>${p.drafted ? "Yes" : "No"}</td><td><button class="secondary save-price" data-id="${p.id}">Save</button></td></tr>`;
-}
-function bindPriceButtons() {
-  $$(".save-price").forEach((b) =>
-    b.addEventListener("click", async () => {
-      try {
-        await api(`/api/manager/pokemon/${b.dataset.id}/price`, {
-          method: "PUT",
-          body: { price: Number($(`#price-${b.dataset.id}`).value) },
-        });
-        toast("Price saved");
-      } catch (e) {
-        toast(e.message, true);
-      }
-    }),
-  );
 }
 
 boot();
