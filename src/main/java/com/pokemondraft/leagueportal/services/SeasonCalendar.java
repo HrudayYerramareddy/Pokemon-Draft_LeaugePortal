@@ -95,8 +95,8 @@ public final class SeasonCalendar {
       item.put("lineupRequired", w.lineupRequired());
       if (w.week() == 4) {
         item.put("waiverNotes", List.of(
-            "Period 1: November 25–27; process at midnight November 28",
-            "Period 2: November 28–30; process at midnight December 1"));
+            "Period 1: November 25–28 until 7 PM ET; process by end of November 28",
+            "Period 2: November 28 after 7 PM–December 1 until 7 PM ET; process by end of December 1"));
       }
       return item;
     }).toList();

@@ -3,14 +3,20 @@ package com.pokemondraft.leagueportal.services;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import java.util.*;
+import java.time.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class FreeAgencyService {
   private static final int ROSTER_LIMIT = 10, ROSTER_BUDGET = 100;
+  private static final ZoneId EASTERN = ZoneId.of("America/New_York");
+  private static final LocalDateTime[] CLOSES = {LocalDateTime.of(2026,11,28,19,0), LocalDateTime.of(2026,12,1,19,0)};
+  private static final LocalDateTime[] OPENS = {LocalDateTime.of(2026,11,25,0,0),LocalDateTime.of(2026,11,28,19,0)};
+  private final Clock clock;
   private final FreeAgentBidRepository bids;
   private final TeamRepository teams;
   private final PokemonRepository pokemon;
@@ -20,6 +26,7 @@ public class FreeAgencyService {
   private final MatchupRepository matchups;
   private final LeagueSettingsRepository settings;
 
+  @Autowired
   public FreeAgencyService(
       FreeAgentBidRepository bids,
       TeamRepository teams,
@@ -27,6 +34,14 @@ public class FreeAgencyService {
       RosterEntryRepository roster,
       TransactionRecordRepository transactions,
       TradeOfferRepository trades, MatchupRepository matchups, LeagueSettingsRepository settings) {
+    this(bids,teams,pokemon,roster,transactions,trades,matchups,settings,Clock.system(EASTERN));
+  }
+
+  public FreeAgencyService(FreeAgentBidRepository bids, TeamRepository teams,
+      PokemonRepository pokemon, RosterEntryRepository roster,
+      TransactionRecordRepository transactions, TradeOfferRepository trades,
+      MatchupRepository matchups, LeagueSettingsRepository settings, Clock clock) {
+    this.clock=clock;
     this.bids = bids;
     this.teams = teams;
     this.pokemon = pokemon;
@@ -47,7 +62,8 @@ public class FreeAgencyService {
     if (s.isWaiverProcessed() || s.getCurrentWeek() != 4 || waiverPeriodsProcessed() >= 2)
       return false;
     List<Matchup> third = matchups.findByWeekOrderByIdAsc(3);
-    return third.size() == 8 && third.stream().allMatch(Matchup::isPlayed);
+    return third.size() == 8 && third.stream().allMatch(Matchup::isPlayed)
+        && biddingTimeOpen();
   }
 
   /** Specific eligibility reason shown to coaches and used for bid errors. */
@@ -65,7 +81,21 @@ public class FreeAgencyService {
     if (third.size() != 8 || completed != 8)
       return "All 8 Week 3 game results must be recorded before Week 4 free agency opens ("
           + completed + "/8 complete).";
+    if (!biddingTimeOpen()) {
+      int period=waiverPeriodsProcessed();
+      LocalDateTime now=LocalDateTime.now(clock.withZone(EASTERN));
+      if (period>=2) return "Both waiver periods have ended.";
+      return "FAAB Period "+(period+1)+" accepts bids only from "+OPENS[period]
+          +" through before "+CLOSES[period]+" Eastern (7:00 PM cutoff). Current Eastern time: "+now+".";
+    }
     return null;
+  }
+
+  private boolean biddingTimeOpen() {
+    int period=waiverPeriodsProcessed();
+    if (period>=2) return false;
+    LocalDateTime now=LocalDateTime.now(clock.withZone(EASTERN));
+    return !now.isBefore(OPENS[period]) && now.isBefore(CLOSES[period]);
   }
 
   private void requireWindow() {
@@ -129,7 +159,11 @@ public class FreeAgencyService {
   @Transactional
   public Map<String, Object> processBids() {
     settings.lockForDraft();
-    requireWindow();
+    // Commissioner processes only after bidding closes; allow overdue processing
+    // so missing the end-of-day target cannot permanently strand a period.
+    if (waiverClosedForProcessing())
+      throw bad("FAAB processing is only available after 7:00 PM Eastern on "
+          +(waiverPeriodsProcessed()==0?"November 28":"December 1")+".");
     List<FreeAgentBid> pending = bids.findByStatus(BidStatus.PENDING);
     Map<Long, List<FreeAgentBid>> groups = new LinkedHashMap<>();
     for (FreeAgentBid bid : pending)
@@ -184,6 +218,15 @@ public class FreeAgencyService {
     settingsRow.setWaiverProcessed(period >= 2);
     settings.save(settingsRow);
     return Map.of("winners", winners, "wheels", wheels, "period", period);
+  }
+
+  private boolean waiverClosedForProcessing() {
+    LeagueSettings league=settings.findById(1L).orElseGet(LeagueSettings::new);
+    int period=waiverPeriodsProcessed();
+    if (league.getCurrentWeek()!=4 || league.isWaiverProcessed() || period>=2) return true;
+    List<Matchup> games=matchups.findByWeekOrderByIdAsc(3);
+    return games.size()!=8 || games.stream().anyMatch(m->!m.isPlayed())
+        || LocalDateTime.now(clock.withZone(EASTERN)).isBefore(CLOSES[period]);
   }
 
   private boolean canApplyBid(FreeAgentBid b) {

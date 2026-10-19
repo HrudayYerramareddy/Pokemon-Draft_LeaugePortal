@@ -6,6 +6,7 @@ import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.FreeAgencyService;
 import java.util.*;
+import java.time.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -21,12 +22,17 @@ class FreeAgencyServiceTest {
   MatchupRepository matchups = mock(MatchupRepository.class);
   LeagueSettingsRepository settings = mock(LeagueSettingsRepository.class);
   FreeAgencyService service;
+  private static final ZoneId EASTERN=ZoneId.of("America/New_York");
+  private void at(int month,int day,int hour,int minute) {
+    Clock clock=Clock.fixed(LocalDateTime.of(2026,month,day,hour,minute).atZone(EASTERN).toInstant(),EASTERN);
+    service=new FreeAgencyService(bids,teams,pokemon,roster,transactions,trades,matchups,settings,clock);
+  }
   LeagueSettings config;
   Team team;
   List<TransactionRecord> journal = new ArrayList<>();
 
   @BeforeEach void setup() {
-    service = new FreeAgencyService(bids, teams, pokemon, roster, transactions, trades, matchups, settings);
+    at(11,26,12,0);
     config = new LeagueSettings();
     config.setCurrentWeek(4);
     when(settings.findById(1L)).thenReturn(Optional.of(config));
@@ -56,6 +62,33 @@ class FreeAgencyServiceTest {
     when(pokemon.findById(99L)).thenReturn(Optional.of(new Pokemon("Available", 4)));
     when(pokemon.findById(98L)).thenReturn(Optional.of(new Pokemon("Expensive", 60)));
     when(bids.save(any(FreeAgentBid.class))).thenAnswer(inv -> inv.getArgument(0));
+  }
+
+  @Test void periodsHaveExactSevenPmEasternCutoffs() {
+    at(11,24,23,59); assertFalse(service.isWaiverWindowOpen());
+    at(11,25,0,0); assertTrue(service.isWaiverWindowOpen());
+    at(11,28,18,59); assertTrue(service.isWaiverWindowOpen());
+    at(11,28,19,0); assertFalse(service.isWaiverWindowOpen());
+    assertEquals(HttpStatus.BAD_REQUEST,assertThrows(ResponseStatusException.class,
+        ()->service.submitBid(1L,99L,10L,1)).getStatusCode());
+    service.processBids();
+    at(11,28,19,1); assertTrue(service.isWaiverWindowOpen());
+    at(12,1,18,59); assertTrue(service.isWaiverWindowOpen());
+    at(12,1,19,0); assertFalse(service.isWaiverWindowOpen());
+    service.processBids();
+    assertEquals(2, service.waiverPeriodsProcessed());
+    assertEquals(3,team.getFaBudget());
+  }
+
+  @Test void processingCannotRunEarly() {
+    at(11,28,18,59);
+    assertEquals(HttpStatus.BAD_REQUEST,assertThrows(ResponseStatusException.class,
+        service::processBids).getStatusCode());
+    at(11,28,19,0);
+    service.processBids();
+    at(12,1,18,59);
+    assertEquals(HttpStatus.BAD_REQUEST,assertThrows(ResponseStatusException.class,
+        service::processBids).getStatusCode());
   }
 
   @Test void windowRequiresCompletedWeekThreeAndCurrentWeekFour() {
@@ -105,12 +138,14 @@ class FreeAgencyServiceTest {
   }
 
   @Test void processesTwoSeparateWaiverPeriodsWithoutResettingBudgets() {
+    at(11,28,19,0);
     Map<String, Object> first = service.processBids();
     assertEquals(0, first.get("winners"));
     assertEquals(1, first.get("period"));
     assertFalse(config.isWaiverProcessed());
     assertTrue(service.isWaiverWindowOpen());
 
+    at(12,1,19,0);
     Map<String, Object> second = service.processBids();
     assertEquals(2, second.get("period"));
     assertTrue(config.isWaiverProcessed());

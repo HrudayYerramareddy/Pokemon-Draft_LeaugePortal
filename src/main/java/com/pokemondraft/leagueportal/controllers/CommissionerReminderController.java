@@ -111,8 +111,8 @@ public class CommissionerReminderController {
         int period=i+1;
         result.add(new Reminder("faab:period:"+period,
             "Process FAAB Period "+period,
-            "Reminder: Period "+period+" processing is scheduled for midnight "
-                +processingDays[i]+" Eastern. Review bids and use Process Bids manually"
+            "Period "+period+" bidding closes at 7:00 PM Eastern on "
+                +processingDays[i]+". Process bids manually by 11:59 PM Eastern that same day"
                 +(week!=4?". The commissioner must set the league to Week 4 first.":"."),
             "faab"));
       }
