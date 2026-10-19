@@ -16,7 +16,7 @@ class LeagueResetPasswordTest {
   private final HttpSession session=mock(HttpSession.class);
 
   @Test void wrongPasswordNeverResets() {
-    var controller=new LeagueAdministrationController(auth,resets,locks,"private-example");
+    var controller=new LeagueAdministrationController(auth,resets,locks);
     var ex=assertThrows(ResponseStatusException.class, () ->
         controller.reset(new LeagueAdministrationController.ResetRequest("incorrect"),session));
     assertEquals(HttpStatus.FORBIDDEN,ex.getStatusCode());
@@ -24,17 +24,17 @@ class LeagueResetPasswordTest {
     verifyNoInteractions(resets);
   }
 
-  @Test void unconfiguredPasswordDisablesReset() {
-    var controller=new LeagueAdministrationController(auth,resets,locks,"");
+  @Test void blankPasswordNeverResets() {
+    var controller=new LeagueAdministrationController(auth,resets,locks);
     var ex=assertThrows(ResponseStatusException.class, () ->
-        controller.reset(new LeagueAdministrationController.ResetRequest("anything"),session));
-    assertEquals(HttpStatus.SERVICE_UNAVAILABLE,ex.getStatusCode());
+        controller.reset(new LeagueAdministrationController.ResetRequest(""),session));
+    assertEquals(HttpStatus.FORBIDDEN,ex.getStatusCode());
     verifyNoInteractions(resets);
   }
 
   @Test void correctPasswordRequiresManagerAndRunsReset() {
-    var controller=new LeagueAdministrationController(auth,resets,locks,"private-example");
-    controller.reset(new LeagueAdministrationController.ResetRequest("private-example"),session);
+    var controller=new LeagueAdministrationController(auth,resets,locks);
+    controller.reset(new LeagueAdministrationController.ResetRequest("password"),session);
     verify(auth).manager(session);
     verify(resets).resetLeague();
   }
