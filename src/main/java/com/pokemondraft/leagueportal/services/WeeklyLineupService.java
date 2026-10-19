@@ -78,23 +78,40 @@ public class WeeklyLineupService {
         || LocalDateTime.now(ZoneId.of("America/New_York")).isBefore(s.getLineupDeadline())) return;
     for (Matchup m : matchups.findAllByOrderByWeekAscIdAsc())
       if (m.getWeek() == week) {
-        ensureRandom(m.getHomeTeamId(), week);
-        ensureRandom(m.getAwayTeamId(), week);
+        ensureAutomatic(m.getHomeTeamId(), week);
+        ensureAutomatic(m.getAwayTeamId(), week);
       }
   }
 
-  private void ensureRandom(Long teamId, int week) {
+  private void ensureAutomatic(Long teamId, int week) {
     if (submissions.findByTeamIdAndWeek(teamId, week).isPresent()) return;
-    List<RosterEntry> entries = new ArrayList<>(roster.findByTeamId(teamId));
-    if (entries.size() < 6)
+    List<Long> owned = roster.findByTeamId(teamId).stream()
+        .map(RosterEntry::getPokemonId).distinct().sorted().toList();
+    if (owned.size() < 6)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Team " + teamId + " has fewer than 6 Pokémon and cannot be assigned an automatic lineup");
-    Collections.shuffle(entries, new Random(Objects.hash(teamId, week, 2026)));
-    String csv =
-        entries.stream()
-            .limit(6)
-            .map(e -> String.valueOf(e.getPokemonId()))
-            .collect(Collectors.joining(","));
+
+    Set<Long> selected = new LinkedHashSet<>();
+    // Carry forward the most recent lineup, skipping non-playing weeks.
+    submissions.findAll().stream()
+        .filter(ws -> teamId.equals(ws.getTeamId()) && ws.getWeek() < week)
+        .max(Comparator.comparingInt(WeeklySubmission::getWeek))
+        .ifPresent(previous -> {
+          for (String id : previous.getPokemonIdsCsv().split(",")) {
+            try {
+              Long pokemonId = Long.valueOf(id.trim());
+              if (owned.contains(pokemonId) && selected.size() < 6) selected.add(pokemonId);
+            } catch (NumberFormatException ignored) {
+              // Ignore malformed historical entries rather than failing automatic lineup creation.
+            }
+          }
+        });
+    // Replace departed Pokémon, or fill a first-ever lineup, in stable ID order.
+    for (Long id : owned) {
+      if (selected.size() == 6) break;
+      selected.add(id);
+    }
+    String csv = selected.stream().map(String::valueOf).collect(Collectors.joining(","));
     WeeklySubmission ws = new WeeklySubmission(teamId, week, csv);
     ws.setAutomatic(true);
     ws.setSubmittedAt(LocalDateTime.now(ZoneId.of("America/New_York")));
