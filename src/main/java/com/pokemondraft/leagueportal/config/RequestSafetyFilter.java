@@ -22,6 +22,13 @@ public class RequestSafetyFilter extends OncePerRequestFilter {
     String method = request.getMethod();
     boolean modifying = !(method.equals("GET") || method.equals("HEAD") || method.equals("OPTIONS"));
     if (modifying && request.getRequestURI().startsWith("/api/")) {
+      // Browser requests from our own UI carry this non-simple header.
+      // Combined with same-origin checks, it blocks ordinary cross-site forms
+      // from submitting authenticated commissioner actions.
+      if (!"XMLHttpRequest".equals(request.getHeader("X-Requested-With"))) {
+        response.sendError(403, "Use the league website to submit this action");
+        return;
+      }
       // Render's HTTPS edge provides X-Forwarded-Host/Proto; only trust the
       // host/protocol normalized by Spring when it is configured to do so.
       String origin = request.getHeader("Origin");

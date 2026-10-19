@@ -1,43 +1,13 @@
 package com.pokemondraft.leagueportal.config;
 
-import com.pokemondraft.leagueportal.entity.Pokemon;
-import com.pokemondraft.leagueportal.repositories.PokemonRepository;
-import java.util.List;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+/**
+ * Historical compatibility placeholder. Live Pokémon and draft rows are never
+ * rewritten or removed on deployment, even if a future version of the Pokémon
+ * pool is different. New items are seeded only in DataInitializer.
+ */
 @Component
 public class PokemonPoolMigration {
-  private final PokemonRepository pokemon;
-
-  public PokemonPoolMigration(PokemonRepository pokemon) {
-    this.pokemon = pokemon;
-  }
-
-  @EventListener(ApplicationReadyEvent.class)
-  public void consolidateSquawkabilly() {
-    List<String> oldForms =
-        List.of(
-            "Squawkabilly (Green)",
-            "Squawkabilly (Blue)",
-            "Squawkabilly (Yellow)",
-            "Squawkabilly (White)");
-
-    // One league/draft entry. Blue Plumage is only its representative image/API form.
-    if (pokemon.findByName("Squawkabilly").isEmpty()) {
-      int price = pokemon.findByName("Squawkabilly (Blue)").map(Pokemon::getPrice).orElse(0);
-      pokemon.save(new Pokemon("Squawkabilly", price));
-    }
-
-    // Never silently delete a Pokemon already on a legacy roster.
-    for (String oldName : oldForms) {
-      pokemon
-          .findByName(oldName)
-          .ifPresent(
-              old -> {
-                if (!old.isDrafted()) pokemon.delete(old);
-              });
-    }
-  }
+  // Intentionally no automatic migration for this live, one-season league.
 }

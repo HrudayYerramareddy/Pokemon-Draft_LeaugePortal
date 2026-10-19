@@ -3,6 +3,7 @@ package com.pokemondraft.leagueportal.services;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -38,7 +39,7 @@ public class WeeklyLineupService {
     if (!SeasonCalendar.week(week).lineupRequired())
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "There are no lineup submissions in Week " + week + ". Choose a scheduled game week.");
     finalizeExpired(week);
-    if (s.getLineupDeadline() != null && !LocalDateTime.now().isBefore(s.getLineupDeadline()))
+    if (s.getLineupDeadline() != null && !LocalDateTime.now(ZoneId.of("America/New_York")).isBefore(s.getLineupDeadline()))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The Week " + week + " lineup deadline has passed. Your lineup can no longer be changed.");
     if (ids == null || ids.size() != 6 || new HashSet<>(ids).size() != 6)
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select exactly 6 different Pokémon from your roster.");
@@ -61,7 +62,7 @@ public class WeeklyLineupService {
             .findByTeamIdAndWeek(teamId, week)
             .orElse(new WeeklySubmission(teamId, week, csv));
     ws.setPokemonIdsCsv(csv);
-    ws.setSubmittedAt(LocalDateTime.now());
+    ws.setSubmittedAt(LocalDateTime.now(ZoneId.of("America/New_York")));
     ws.setAutomatic(false);
     return submissions.save(ws);
   }
@@ -74,7 +75,7 @@ public class WeeklyLineupService {
     if (s == null
         || s.getCurrentWeek() != week
         || s.getLineupDeadline() == null
-        || LocalDateTime.now().isBefore(s.getLineupDeadline())) return;
+        || LocalDateTime.now(ZoneId.of("America/New_York")).isBefore(s.getLineupDeadline())) return;
     for (Matchup m : matchups.findAllByOrderByWeekAscIdAsc())
       if (m.getWeek() == week) {
         ensureRandom(m.getHomeTeamId(), week);
@@ -96,7 +97,7 @@ public class WeeklyLineupService {
             .collect(Collectors.joining(","));
     WeeklySubmission ws = new WeeklySubmission(teamId, week, csv);
     ws.setAutomatic(true);
-    ws.setSubmittedAt(LocalDateTime.now());
+    ws.setSubmittedAt(LocalDateTime.now(ZoneId.of("America/New_York")));
     submissions.save(ws);
   }
 

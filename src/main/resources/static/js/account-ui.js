@@ -93,7 +93,7 @@ async function renderAccount() {
       try {
         const body = new FormData();
         body.append("file", file);
-        const response = await fetch("/api/teams/me/logo", {method:"POST", body});
+        const response = await fetch("/api/teams/me/logo", {method:"POST", body, headers: {"X-Requested-With":"XMLHttpRequest"}});
         const result = await response.json();
         if (!response.ok) throw new Error(apiErrorMessage(response.status, result));
         refreshTeamIdentity(result);

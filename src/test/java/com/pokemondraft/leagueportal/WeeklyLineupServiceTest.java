@@ -49,7 +49,7 @@ class WeeklyLineupServiceTest {
   }
 
   @Test void rejectsAfterDeadline() {
-    config.setLineupDeadline(LocalDateTime.now().minusMinutes(1));
+    config.setLineupDeadline(LocalDateTime.now(java.time.ZoneId.of("America/New_York")).minusMinutes(1));
     assertEquals(HttpStatus.BAD_REQUEST, assertThrows(ResponseStatusException.class,
         () -> service.submit(1L, six)).getStatusCode());
   }

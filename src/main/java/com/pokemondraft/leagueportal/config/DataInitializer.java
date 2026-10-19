@@ -3,7 +3,6 @@ package com.pokemondraft.leagueportal.config;
 import com.pokemondraft.leagueportal.entity.*;
 import com.pokemondraft.leagueportal.repositories.*;
 import com.pokemondraft.leagueportal.services.ScheduleService;
-import com.pokemondraft.leagueportal.services.CoachLoginMigrationService;
 import com.pokemondraft.leagueportal.services.SeasonCalendar;
 import java.util.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,8 +20,7 @@ public class DataInitializer {
       LeagueSettingsRepository settings,
       MatchupRepository matchups,
       RosterEntryRepository roster,
-      ScheduleService schedule,
-      CoachLoginMigrationService coachLogins) {
+      ScheduleService schedule) {
     return args -> {
       if (settings.count() == 0) settings.save(new LeagueSettings());
       if (teams.count() == 0) {
@@ -36,16 +34,9 @@ public class DataInitializer {
         for (int i = 1; i <= 16; i++)
           users.save(new AppUser("coach" + i, encoder.encode("password"), Role.COACH, saved.get(i - 1).getId()));
       }
-      // Production Neon team records are authoritative. Do NOT overwrite the
-      // name, coach_name, division, or draft_position columns on application startup.
-      // Coach login names are reconciled by app_users.team_id -> team.id instead.
-      coachLogins.reconcile();
-      for (Team t : teams.findAll()) {
-        if (t.getFaBudget() == 100) {
-          t.setFaBudget(3);
-          teams.save(t);
-        }
-      }
+      // Existing user names, passwords, divisions, budgets, roster ownership,
+      // draft order and team identities belong to the live database.
+      // Do not reconcile, reprice, or reset them on code deployments.
       Map<String, Integer> basePrices = BasePrices.values();
       if (pokemon.count() == 0) {
         for (String name : championsPool()) pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
@@ -57,24 +48,9 @@ public class DataInitializer {
           if (pokemon.findByName(name).isEmpty())
             pokemon.save(new Pokemon(name, basePrices.getOrDefault(name, 0)));
       }
-      // One-time Season 2 CSV price migration. Update prices in place, preserving
-      // Pokemon IDs, roster ownership, draft picks, and all league history.
-      LeagueSettings league = settings.findById(1L).orElseThrow();
-      if (league.getRegularSeasonWeeks() == 10) {
-        league.setRegularSeasonWeeks(SeasonCalendar.REGULAR_SEASON_END);
-        settings.save(league);
-      }
-      if (!league.isSeason2PricesApplied()) {
-        for (Pokemon p : pokemon.findAll()) {
-          Integer chartPrice = basePrices.get(p.getName());
-          if (chartPrice != null && p.getPrice() != chartPrice) {
-            p.setPrice(chartPrice);
-            pokemon.save(p);
-          }
-        }
-        league.setSeason2PricesApplied(true);
-        settings.save(league);
-      }
+      // League prices and current week are authoritative after initial setup.
+      // Future features must use additive schema changes, never silently reset
+      // existing data when Render restarts.
       // RosterEntry is the source of truth for current ownership. Repair only
       // the derived Pokemon.drafted flag; never rebuild or remove roster rows.
       Set<Long> rosteredPokemonIds = new HashSet<>();
@@ -88,7 +64,7 @@ public class DataInitializer {
       }
 
       // Idempotent official fixture migration; keeps matching recorded results.
-      if (teams.count() == 16) schedule.syncOfficialSchedule();
+      if (teams.count() == 16 && matchups.count() == 0) schedule.syncOfficialSchedule();
     };
   }
 

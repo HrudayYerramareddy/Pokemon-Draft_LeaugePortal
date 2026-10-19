@@ -52,7 +52,10 @@ function apiErrorMessage(status, data) {
   return fallback[status] || `Request failed (${status}). Please try again.`;
 }
 api = async function (url, options = {}) {
-  const opts = { headers: { "Content-Type": "application/json" }, ...options };
+  const opts = {...options, headers: {
+    "Content-Type":"application/json", "X-Requested-With":"XMLHttpRequest",
+    ...(options.headers || {})
+  }};
   if (options.body && typeof options.body !== "string")
     opts.body = JSON.stringify(options.body);
   let res;

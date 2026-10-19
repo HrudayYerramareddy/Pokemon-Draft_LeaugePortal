@@ -173,6 +173,21 @@ public class ApiController {
     return m;
   }
 
+  /** Lightweight live status; avoids transferring the entire Pokémon pool on polls. */
+  @GetMapping("/draft/status")
+  public Map<String, Object> draftStatus(HttpSession session) {
+    auth.current(session);
+    LeagueSettings league = settings();
+    Team current = draft.currentTeam();
+    Map<String, Object> result = new LinkedHashMap<>();
+    result.put("pickCount", picks.count());
+    result.put("currentTeamId", current == null ? null : current.getId());
+    result.put("draftOpen", league.isDraftOpen());
+    result.put("draftFinalized", league.isDraftFinalized());
+    result.put("snakeDraft", league.isSnakeDraft());
+    return result;
+  }
+
   public record PickRequest(Long pokemonId) {}
 
   @PostMapping("/draft/pick")

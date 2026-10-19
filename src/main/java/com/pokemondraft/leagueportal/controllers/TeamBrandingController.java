@@ -119,7 +119,7 @@ public class TeamBrandingController {
     if (team.getLogoBase64() == null || team.getLogoContentType() == null)
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Team has no logo");
     return ResponseEntity.ok()
-        .cacheControl(CacheControl.noStore())
+        .cacheControl(CacheControl.maxAge(java.time.Duration.ofDays(7)).cachePrivate())
         .contentType(MediaType.parseMediaType(team.getLogoContentType()))
         .body(Base64.getDecoder().decode(team.getLogoBase64()));
   }
