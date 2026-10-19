@@ -153,9 +153,16 @@ public class ScheduleService {
   }
 
   public static boolean validSeriesScore(Integer home, Integer away) {
+    return validSeriesScore(14, home, away);
+  }
+
+  public static boolean validSeriesScore(int week, Integer home, Integer away) {
     if (home == null || away == null) return false;
-    return (home == 2 && (away == 0 || away == 1))
-        || (away == 2 && (home == 0 || home == 1));
+    if (week >= 14) {
+      return (home == 2 && (away == 0 || away == 1))
+          || (away == 2 && (home == 0 || home == 1));
+    }
+    return home + away == 3 && home >= 0 && away >= 0 && home <= 3 && away <= 3;
   }
 
   @Transactional
@@ -166,9 +173,9 @@ public class ScheduleService {
         || !SeasonCalendar.week(m.getWeek()).lineupRequired())
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
           "This week has no scheduled match.");
-    if (!validSeriesScore(homeScore, awayScore))
+    if (!validSeriesScore(m.getWeek(), homeScore, awayScore))
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-          "Best-of-three results must be 2–0, 2–1, 0–2 or 1–2.");
+          m.getWeek() >= 14 ? "Playoff scores must be 2–0, 2–1, 0–2 or 1–2." : "Regular-season scores must be 3–0, 2–1, 1–2 or 0–3.");
     m.setHomeScore(homeScore);
     m.setAwayScore(awayScore);
     m.setPlayed(true);

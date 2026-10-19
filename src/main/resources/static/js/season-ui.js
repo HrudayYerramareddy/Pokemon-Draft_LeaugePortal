@@ -3,6 +3,7 @@ let seasonSelectedWeek = "all";
 let seasonSelectedTeam = "all";
 
 function seasonMatchCard(m, locked = false) {
+  const maxScore = m.week >= 14 ? 2 : 3;
   const score = m.played ? m.homeScore + " – " + m.awayScore : "vs";
   const status = m.revealed
     ? '<div class="lineup-reveal"><div><h4>' + teamBrand(m.homeTeamId) + '</h4><div class="schedule-six-grid">' +
@@ -17,9 +18,9 @@ function seasonMatchCard(m, locked = false) {
     ? '<p class="season-locked-note">🔒 Final results — locked by commissioner</p>'
     : state.user.role === "MANAGER"
     ? `<div class="toolbar season-score-controls">
-         <input class="score-home inline-input" data-id="${m.id}" type="number" min="0" max="2" step="1" value="${m.homeScore ?? ""}" placeholder="Home score">
-         <input class="score-away inline-input" data-id="${m.id}" type="number" min="0" max="2" step="1" value="${m.awayScore ?? ""}" placeholder="Away score">
-         <button class="primary save-result" data-id="${m.id}">Save Result</button>
+         <input class="score-home inline-input" data-id="${m.id}" type="number" min="0" max="${maxScore}" step="1" value="${m.homeScore ?? ""}" placeholder="Home score">
+         <input class="score-away inline-input" data-id="${m.id}" type="number" min="0" max="${maxScore}" step="1" value="${m.awayScore ?? ""}" placeholder="Away score">
+         <button class="primary save-result" data-id="${m.id}" data-week="${m.week}">Save Result</button>
          ${m.played ? `<button class="secondary clear-result" data-id="${m.id}">Clear</button>` : ""}
        </div>` : "";
   return `<div class="season-match ${m.revealed ? "season-match--revealed" : ""}">
@@ -36,9 +37,15 @@ function wireSeasonScores(scope, refresh, playoff = false) {
       if (home === "" || away === "" || !Number.isInteger(Number(home)) ||
           !Number.isInteger(Number(away)) || Number(home) < 0 || Number(away) < 0)
         return toast("Enter two nonnegative whole-number scores.", true);
-      if (!((Number(home) === 2 && [0,1].includes(Number(away))) ||
-            (Number(away) === 2 && [0,1].includes(Number(home)))))
-        return toast("Best-of-three scores must be 2–0, 2–1, 0–2, or 1–2.", true);
+      const isPlayoff = playoff || Number(button.dataset.week) >= 14;
+      const homeWins = Number(home), awayWins = Number(away);
+      const valid = isPlayoff
+        ? ((homeWins === 2 && [0,1].includes(awayWins)) || (awayWins === 2 && [0,1].includes(homeWins)))
+        : homeWins + awayWins === 3 && homeWins <= 3 && awayWins <= 3;
+      if (!valid)
+        return toast(isPlayoff
+          ? "Playoff scores must be 2–0, 2–1, 0–2 or 1–2."
+          : "Regular-season scores must be 3–0, 2–1, 1–2 or 0–3.", true);
       try {
         await api(`/api/manager/results/${id}`, {
           method: "POST",

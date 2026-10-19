@@ -98,7 +98,26 @@ async function checkViewport(width, height, role) {
           {homeScore:2,awayScore:1});
         if (result.status !== 200) throw new Error("Commissioner could not score a game");
       }
-      const lock = await call("PUT","/api/manager/weeks/1/lock",{locked:true});
+      const week2 = fullSchedule.value.find(game => game.week === 2);
+      if (!week2) throw new Error("Missing Week 2 fixture");
+      const week2Saved = await call("POST",`/api/manager/results/${week2.id}`,
+        {homeScore:0,awayScore:3});
+      if (week2Saved.status !== 200)
+        throw new Error("Week 2 rejected valid 0-3 score: " + JSON.stringify(week2Saved));
+      const persisted = (await call("GET","/api/schedule")).value.find(game => game.id === week2.id);
+      if (!persisted.played || persisted.homeScore !== 0 || persisted.awayScore !== 3)
+        throw new Error("Week 2 score did not persist");
+      const invalid = await call("POST",`/api/manager/results/${week2.id}`,
+        {homeScore:3,awayScore:1});
+      if (invalid.status < 400) throw new Error("Week 2 incorrectly accepted four games");
+      const stillSaved = (await call("GET","/api/schedule")).value.find(game => game.id === week2.id);
+      if (stillSaved.homeScore !== 0 || stillSaved.awayScore !== 3)
+        throw new Error("Invalid score overwrote Week 2 result");
+      await page.locator('.sidebar nav button[data-page="schedule"]').click();
+      await page.locator("#schedule-week").selectOption("2");
+      const maxScore = await page.locator('.score-home').first().getAttribute("max");
+      if (maxScore !== "3") throw new Error("Regular-season score field must allow 3 wins");
+            const lock = await call("PUT","/api/manager/weeks/1/lock",{locked:true});
       if (lock.status !== 200 || lock.value["1"] !== true)
         throw new Error("Commissioner failed to lock a completed week");
       const rejected = await call("DELETE",`/api/manager/results/${week1[0].id}`);
