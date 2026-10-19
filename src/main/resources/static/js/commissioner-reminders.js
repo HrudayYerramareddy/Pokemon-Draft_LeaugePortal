@@ -36,9 +36,9 @@
           const button=document.createElement("button");
           button.type="button";button.className="secondary";
           button.textContent=n.action==="lock"?"See Week Locks":
-            n.action==="faab"?"Go to Free Agency":"Go to League Settings";
+            n.action==="faab"?"Go to FAAB Processing":"Go to League Settings";
           button.onclick=()=>{
-            if(n.action==="faab") showPage("freeagency");
+            if(n.action==="faab") document.querySelector("#manager-faab-process")?.scrollIntoView({behavior:"smooth",block:"center"});
             else {
               document.querySelector(n.action==="lock"?"#manager-week-locks":"#setting-week")
                 ?.scrollIntoView({behavior:"smooth",block:"center"});
