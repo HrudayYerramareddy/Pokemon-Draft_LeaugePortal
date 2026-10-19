@@ -33,7 +33,7 @@
         <p><strong>Preserves:</strong> every Pokémon and its price, team names, coaches, passwords,
            divisions, draft order, team logos, league name, draft format, and official schedule.</p>
         <div id="league-reset-preview" class="manager-reset-stats muted">Loading reset preview…</div>
-        <label class="manager-reset-confirm">Enter the private league reset password to enable reset
+        <label class="manager-reset-confirm">Enter the reset password to enable reset
           <input id="league-reset-phrase" type="password" autocomplete="off" spellcheck="false"
             placeholder="League reset password">
         </label>
