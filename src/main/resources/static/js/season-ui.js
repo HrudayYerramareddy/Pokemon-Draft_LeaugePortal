@@ -17,8 +17,8 @@ function seasonMatchCard(m, locked = false) {
     ? '<p class="season-locked-note">🔒 Final results — locked by commissioner</p>'
     : state.user.role === "MANAGER"
     ? `<div class="toolbar season-score-controls">
-         <input class="score-home inline-input" data-id="${m.id}" type="number" min="0" value="${m.homeScore ?? ""}" placeholder="Home score">
-         <input class="score-away inline-input" data-id="${m.id}" type="number" min="0" value="${m.awayScore ?? ""}" placeholder="Away score">
+         <input class="score-home inline-input" data-id="${m.id}" type="number" min="0" max="2" step="1" value="${m.homeScore ?? ""}" placeholder="Home score">
+         <input class="score-away inline-input" data-id="${m.id}" type="number" min="0" max="2" step="1" value="${m.awayScore ?? ""}" placeholder="Away score">
          <button class="primary save-result" data-id="${m.id}">Save Result</button>
          ${m.played ? `<button class="secondary clear-result" data-id="${m.id}">Clear</button>` : ""}
        </div>` : "";
@@ -36,8 +36,9 @@ function wireSeasonScores(scope, refresh, playoff = false) {
       if (home === "" || away === "" || !Number.isInteger(Number(home)) ||
           !Number.isInteger(Number(away)) || Number(home) < 0 || Number(away) < 0)
         return toast("Enter two nonnegative whole-number scores.", true);
-      if (playoff && home === away)
-        return toast("Playoff games cannot finish tied.", true);
+      if (!((Number(home) === 2 && [0,1].includes(Number(away))) ||
+            (Number(away) === 2 && [0,1].includes(Number(home)))))
+        return toast("Best-of-three scores must be 2–0, 2–1, 0–2, or 1–2.", true);
       try {
         await api(`/api/manager/results/${id}`, {
           method: "POST",
@@ -141,8 +142,8 @@ renderPlayoffs = async function () {
         const score = game.played ? `${game.homeScore} – ${game.awayScore}` : "vs";
         const inputs = game.ready && state.user.role === "MANAGER" && lockedWeeks[String(week)] !== true
           ? `<div class="toolbar season-score-controls">
-               <input class="score-home inline-input" data-id="${game.id}" type="number" min="0" value="${game.homeScore ?? ""}" placeholder="Home">
-               <input class="score-away inline-input" data-id="${game.id}" type="number" min="0" value="${game.awayScore ?? ""}" placeholder="Away">
+               <input class="score-home inline-input" data-id="${game.id}" type="number" min="0" max="2" step="1" value="${game.homeScore ?? ""}" placeholder="Home">
+               <input class="score-away inline-input" data-id="${game.id}" type="number" min="0" max="2" step="1" value="${game.awayScore ?? ""}" placeholder="Away">
                <button class="primary save-result" data-id="${game.id}">Save</button>
                ${game.played ? `<button class="secondary clear-result" data-id="${game.id}">Clear</button>` : ""}
              </div>` : "";

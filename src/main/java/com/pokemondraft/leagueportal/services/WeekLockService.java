@@ -48,9 +48,9 @@ public class WeekLockService {
       List<Matchup> games = matchups.findByWeekOrderByIdAsc(week);
       int expected = SeasonCalendar.isRegularGameWeek(week) ? 8 : week == 14 ? 4 : week == 15 ? 2 : 1;
       if (games.size() != expected || games.stream().anyMatch(g -> !g.isPlayed()
-          || g.getHomeScore() == null || g.getAwayScore() == null))
+          || !ScheduleService.validSeriesScore(g.getHomeScore(), g.getAwayScore())))
         throw new ResponseStatusException(HttpStatus.CONFLICT,
-            "Enter all " + expected + " results for Week " + week + " before locking");
+            "All " + expected + " results for Week " + week + " must be valid best-of-three scores (2–0, 2–1, 0–2, 1–2).");
     }
     WeekLock row = locks.findById(week).orElse(new WeekLock(week, locked));
     row.setLocked(locked);

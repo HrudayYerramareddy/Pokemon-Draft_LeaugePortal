@@ -152,14 +152,23 @@ public class ScheduleService {
         || (b.equals(m.getHomeTeamId()) && a.equals(m.getAwayTeamId()));
   }
 
+  public static boolean validSeriesScore(Integer home, Integer away) {
+    if (home == null || away == null) return false;
+    return (home == 2 && (away == 0 || away == 1))
+        || (away == 2 && (home == 0 || home == 1));
+  }
+
   @Transactional
   public void setResult(Long matchupId, int homeScore, int awayScore) {
     Matchup m = matchups.findById(matchupId).orElseThrow();
     weekLocks.requireEditable(m.getWeek());
-    if (SeasonCalendar.isPlayoffWeek(m.getWeek()) && homeScore == awayScore)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Playoff matches require a winner");
-    if (m.getWeek() < 1 || m.getWeek() > SeasonCalendar.FINAL_WEEK || homeScore < 0 || awayScore < 0)
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid game or score");
+    if (m.getWeek() < 1 || m.getWeek() > SeasonCalendar.FINAL_WEEK
+        || !SeasonCalendar.week(m.getWeek()).lineupRequired())
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "This week has no scheduled match.");
+    if (!validSeriesScore(homeScore, awayScore))
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Best-of-three results must be 2–0, 2–1, 0–2 or 1–2.");
     m.setHomeScore(homeScore);
     m.setAwayScore(awayScore);
     m.setPlayed(true);

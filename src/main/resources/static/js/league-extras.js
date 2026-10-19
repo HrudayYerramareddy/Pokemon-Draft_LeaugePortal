@@ -4,9 +4,6 @@
   let lastNoticeKeys = new Set();
   let notifiedOnce = false;
 
-  const exports = ["draft", "rosters", "standings", "schedule", "transactions"];
-  const label = {draft:"Draft picks", rosters:"Team rosters", standings:"Standings",
-    schedule:"Schedule & scores", transactions:"Transaction history"};
   const sidebar = document.querySelector(".sidebar");
   if (!sidebar) return;
   const wrapper = document.createElement("div");
@@ -15,32 +12,22 @@
     <button type="button" id="league-notices-toggle" class="secondary" aria-expanded="false">
       Notifications <span id="league-notice-count" class="league-notice-count" hidden>0</span>
     </button>
-    <button type="button" id="league-exports-toggle" class="secondary" aria-expanded="false">Exports</button>
     <section id="league-notices-panel" class="league-tool-panel hidden" aria-label="League notifications">
       <h3>Coach Notifications</h3>
       <p class="muted small">Updates appear while you're signed into the website. Browser alerts require permission.</p>
       <div id="league-notices-list"><p class="muted">Checking notifications…</p></div>
       <button id="league-browser-alerts" type="button" class="secondary">Enable browser alerts</button>
     </section>
-    <section id="league-exports-panel" class="league-tool-panel hidden" aria-label="League exports">
-      <h3>Download League Data</h3>
-      <p class="muted small">These downloads do not change Neon records.</p>
-      <div class="league-export-links">${exports.map(kind =>
-        `<a href="/api/exports/${kind}" download="league-${kind}.csv">${label[kind]} (CSV)</a>`).join("")}</div>
-      <button type="button" id="league-print-current" class="secondary">Print current page</button>
-    </section>`;
+    `;
   sidebar.insertBefore(wrapper, document.querySelector("#logout-button"));
 
   const $notice = selector => wrapper.querySelector(selector);
   const noticePanel = $notice("#league-notices-panel");
-  const exportsPanel = $notice("#league-exports-panel");
 
   function toggle(panel, button) {
     const opened = panel.classList.contains("hidden");
     noticePanel.classList.add("hidden");
-    exportsPanel.classList.add("hidden");
     $notice("#league-notices-toggle").setAttribute("aria-expanded","false");
-    $notice("#league-exports-toggle").setAttribute("aria-expanded","false");
     if (opened) {
       panel.classList.remove("hidden");
       button.setAttribute("aria-expanded","true");
@@ -50,8 +37,6 @@
     toggle(noticePanel,$notice("#league-notices-toggle"));
     markRead();
   };
-  $notice("#league-exports-toggle").onclick = () => toggle(exportsPanel,$notice("#league-exports-toggle"));
-  $notice("#league-print-current").onclick = () => window.print();
   $notice("#league-browser-alerts").onclick = async () => {
     if (!("Notification" in window)) return toast("Browser notifications aren't supported here.",true);
     if (Notification.permission === "granted") return toast("Browser notifications are already enabled.");
@@ -133,7 +118,6 @@
     const button = event.target.closest("button[data-page]");
     if (!button) return;
     noticePanel.classList.add("hidden");
-    exportsPanel.classList.add("hidden");
     if (window.matchMedia("(max-width: 800px)").matches) {
       button.scrollIntoView({block:"nearest", inline:"center", behavior:"smooth"});
     }
@@ -158,7 +142,7 @@
         <p class="muted">${owned.length}/10 Pokémon selected · $${current}/$100 used.
         Draft picks cannot exceed the $100 roster budget.</p><p class="muted" id="draft-cost-preview">
         Select a Pokémon to preview the remaining budget.</p>`;
-      root.addEventListener("click", e => {
+      root.onclick = e => {
         const card = e.target.closest?.("[data-pokemon-id]");
         if (!card || !root.contains(card)) return;
         const mon = d.available.find(p=>Number(p.id)===Number(card.dataset.pokemonId));
@@ -169,7 +153,7 @@
           ? `${mon.name} costs $${mon.price}, which exceeds the $${left} remaining budget.`
           : `${mon.name} costs $${mon.price}. After this pick: $${after} remaining.`;
         status.classList.toggle("budget-error",after<0);
-      },{once:false});
+      };
     } else {
       header.innerHTML = '<strong>Draft board complete</strong><p class="muted">All 160 draft positions have been selected.</p>';
     }
@@ -179,7 +163,7 @@
       button.textContent="Finalize Official Draft";
       button.className="primary";
       button.onclick=async()=>{
-        if (!confirm("Finalize all 160 picks? This permanently disables ordinary pick undo and prevents re-opening the draft. Save an export first."))return;
+        if (!confirm("Finalize all 160 picks? This permanently disables ordinary pick undo and prevents re-opening the draft. Ensure you have a database backup first."))return;
         try { await api("/api/manager/draft/finalize",{method:"POST"});toast("Draft finalized");await renderDraft(); }
         catch(e){toast(e.message,true);}
       };
