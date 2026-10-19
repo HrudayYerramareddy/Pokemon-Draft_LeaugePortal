@@ -355,7 +355,6 @@ async function renderManager() {
         <label>Week <input id="setting-week" type="number" min="1" max="16" value="${state.settings.currentWeek}"></label>
         <label>Lineup deadline <input id="setting-deadline" type="datetime-local" value="${state.settings.lineupDeadline ? String(state.settings.lineupDeadline).slice(0, 16) : ""}"></label>
         <label><input id="setting-draft" type="checkbox" ${state.settings.draftOpen ? "checked" : ""}> Draft open</label>
-        <label><input id="setting-snake" type="checkbox" ${state.settings.snakeDraft ? "checked" : ""}> Snake draft</label>
         <button id="save-settings" class="primary">Save Settings</button>
       </div></div>
       <section class="card manager-faab-process" id="manager-faab-process">
@@ -388,7 +387,6 @@ async function renderManager() {
           leagueName: $("#setting-name").value,
           currentWeek: Number($("#setting-week").value),
           draftOpen: $("#setting-draft").checked,
-          snakeDraft: $("#setting-snake").checked,
           lineupDeadline: $("#setting-deadline").value,
         },
       });
