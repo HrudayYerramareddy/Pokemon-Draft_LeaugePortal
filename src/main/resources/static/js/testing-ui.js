@@ -103,6 +103,7 @@
               });
               toast(`Week ${week} ${lock ? "locked" : "unlocked"}`);
               await loadData();
+              window.refreshCommissionerReminders?.();
             } catch (error) {toast(error.message,true); button.disabled = false;}
           };
         });

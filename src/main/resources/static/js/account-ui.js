@@ -55,7 +55,7 @@ async function renderAccount() {
         <button class="primary" id="account-change">Change Password</button>
       </div>
     </div>
-    ${manager ? '<div class="card"><h2>Reset Coach Password</h2><p class="muted">Commissioner only. Resets a selected coach password to <strong>password</strong>. Ask them to change it after signing in.</p><div class="toolbar"><label>Coach<select id="reset-user"><option value="">Select coach</option></select></label><button class="danger" id="reset-password">Reset to password</button></div></div>' : ""}`;
+    ${manager ? '<div class="card"><h2>Reset Coach Password</h2><p class="muted">Commissioner only. Generates a temporary password for the selected coach. Share it privately; the coach can change it after signing in.</p><div class="toolbar"><label>Coach<select id="reset-user"><option value="">Select coach</option></select></label><button class="danger" id="reset-password">Generate Temporary Password</button></div></div>' : ""}`;
   if (branding) {
     $("#branding-save-name").onclick = async () => {
       const button = $("#branding-save-name");
